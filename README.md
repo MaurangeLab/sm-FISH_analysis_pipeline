@@ -6,7 +6,7 @@ To use these codes, you should use Spyder from anaconda, and you need the right 
 - In anaconda navigator, open anaconda prompt.
 - Create the first environment, "spots_analysis" with "conda create --name spots_analysis python==3.10"
 - Activate the environment : conda activate spots_analysis
-- Add kernel, which will unable your python console to work : "pip install spyder-kernels==3.14"
+- Add kernel, which will allow your python console to work : "pip install spyder-kernels==3.14"
 - Add tifffile : "pip install tifffile", do so with openpyxl, matplotlib and pandas
 - Add specific version of numpy : "pip install numpy==1.26.4"
 This environment is finished. Quit it by "conda deactivate"

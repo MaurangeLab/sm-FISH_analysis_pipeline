@@ -1,0 +1,183 @@
+import os
+os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
+os.environ["CUDA_VISIBLE_DEVICES"]=""
+
+import sys
+print(sys.executable)
+
+import tifffile as tif
+import traceback
+import numpy as np
+from epyseg.deeplearning.deepl import EZDeepLearning
+from batoolset.img import Img, save_as_tiff, _rotate_along_Z_axis, _recover_orig_after_rotation_along_z_axis, normalization
+import os
+import tempfile
+import matplotlib.pyplot as plt
+
+#Détection of spots in 3D
+#Code was kindly given by one of the writers of the Epyseg article.
+
+
+
+def predict_single_image(deepTA, input_file, **predict_parameters):
+    
+    input_shape = deepTA.get_inputs_shape()
+    output_shape = deepTA.get_outputs_shape()
+    
+    # Store clip_by_frequency separately (suggested to rename local var to clip_freq)
+    clip_by_frequency = predict_parameters.pop('clip_by_frequency', None)
+    
+    # Create a temporary image file for prediction generator
+    temp = tempfile.NamedTemporaryFile(
+        prefix="epyseg_tmp",
+        suffix=".tif",
+        delete=False
+    )
+    name = temp.name
+    temp.close()
+
+    # Save the input image into the temporary file
+    # (Workaround for ImageJ saving issues).
+    Img(input_file, dimensions='hwc').save(name)
+
+    results = None
+    
+    try:
+        # Build predict generator
+        predict_generator = deepTA.get_predict_generator(
+            inputs=[name],
+            input_shape=input_shape,
+            output_shape=output_shape,
+            clip_by_frequency=clip_by_frequency,
+            **predict_parameters  # passed to generator
+        )
+
+        final_predict_generator = predict_generator.predict_generator()
+
+        # Run prediction
+        results = deepTA.predict_single(
+            final_predict_generator,
+            output_shape,
+            batch_size=1,
+            **predict_parameters  # passed to predict_single
+        )
+        
+    except Exception:
+        traceback.print_exc()
+    
+    finally:
+        # Always remove temporary file
+        try:
+            os.remove(name)
+        except Exception:
+            traceback.print_exc()
+
+    return results
+
+def predict_3D_stack_from_2D_model(
+    deepTA,
+    stack,
+    apply_normalization_to_entire_stack_before=True,
+    rotation_along_Z_axis_pattern=None,
+    **predict_parameters
+):
+    # --- Load stack if path was provided
+    if isinstance(stack, str):
+        stack = Img(stack).astype(float)
+
+    # Ensure stack is Z, H, W, C for normalizer compatibility
+    # Suggested variable name: ensure_stack_has_channel
+    if len(stack.shape) == 3:
+        stack = stack[..., np.newaxis]
+
+    # --- Handle normalization
+    input_norm_cfg = predict_parameters.get("input_normalization", None)
+
+    if input_norm_cfg is not None and apply_normalization_to_entire_stack_before:
+        print("normalizing stack")
+        stack = normalization(stack, **input_norm_cfg)
+    else:
+        print("normalizing single images")
+
+    # If global normalization was applied, disable per-image normalization below
+    if apply_normalization_to_entire_stack_before:
+        predict_parameters["input_normalization"] = None
+
+    # --- Rotation (optional, can be useful especially if z is less than x, y but model may not work properly due to reduced resolution along Z)
+    if rotation_along_Z_axis_pattern is not None:
+        stack = _rotate_along_Z_axis(stack)
+
+    final_output = []
+    nb_z = stack.shape[0]
+
+    # --- Slice-wise prediction using the 2D model
+    for iii, img in enumerate(stack):
+        print("current frame", iii, "/", nb_z)
+
+        try:
+            result = predict_single_image(deepTA, img, **predict_parameters)
+        except Exception:
+            print(f"Error predicting slice {iii}")
+            traceback.print_exc()
+            result = None
+
+        if result is not None:
+            result = np.squeeze(result)
+        final_output.append(result)
+
+    # Stack predictions back into a 3D array
+    final_output = np.stack(final_output, axis=0)
+
+    # --- Undo rotation if applied
+    if rotation_along_Z_axis_pattern is not None:
+        final_output = _recover_orig_after_rotation_along_z_axis(final_output)
+
+    return final_output
+
+if __name__ == '__main__':
+
+    TILE_WIDTH = 256
+    TILE_HEIGHT = 256
+    TILE_OVERLAP = 32
+
+    input_channel_of_interest = None #None # 0 1 2
+    input_normalization = None
+    hq_predictions = 'mean'
+    hq_pred_options = 'Only use pixel preserving augs (Recommended for CARE-like models/surface extraction)'
+    input_normalization = {'method': 'Rescaling (min-max normalization)', 'range': [0, 1], 'individual_channels': True}
+
+    predict_parameters = {}
+    predict_parameters["input_channel_of_interest"] = input_channel_of_interest
+    predict_parameters["default_input_tile_width"] = TILE_WIDTH
+    predict_parameters["default_input_tile_height"] = TILE_HEIGHT
+    predict_parameters["default_output_tile_width"] = TILE_WIDTH
+    predict_parameters["default_output_tile_height"] = TILE_HEIGHT
+    predict_parameters["tile_width_overlap"] = TILE_OVERLAP
+    predict_parameters["tile_height_overlap"] = TILE_OVERLAP
+    predict_parameters["hq_pred_options"] = hq_pred_options #"Use all augs (pixel preserving + deteriorating) (Recommended for segmentation)"  # not yet supported on current versions of epyseg
+    predict_parameters["hq_predictions"] = hq_predictions #"Use all augs (pixel preserving + deteriorating) (Recommended for segmentation)"  # not yet supported on current versions of epyseg
+    predict_parameters["post_process_algorithm"] = None  # 'Keep first channel only'# None
+    predict_parameters["input_normalization"] = input_normalization # to be applied to the stack then reset to None for all other cases...
+
+    deepTA = EZDeepLearning()
+
+    predict_parameters["input_channel_of_interest"] = 0
+    
+    path = sys.argv[2]
+    file_name = sys.argv[1]
+
+    f = path + file_name + ".tif"
+    all_channels = tif.imread(f)
+    chinmo_channel = sys.argv[3]
+    model_name = sys.argv[4]
+    model_path =  path + "Model/" + model_name
+    
+    deepTA.load_or_build(model= model_path )
+    
+    to_detect = all_channels[:, chinmo_channel]
+
+    out = predict_3D_stack_from_2D_model(deepTA, to_detect, apply_normalization_to_entire_stack_before=True, **predict_parameters)
+    
+    print(out.shape)
+    
+    save_as_tiff(out[...,np.newaxis], path + "detected_" + file_name + ".tif")

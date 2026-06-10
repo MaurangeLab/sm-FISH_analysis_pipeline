@@ -1,0 +1,119 @@
+import sys
+print(sys.executable)
+
+import os.path
+from cellpose import models, io
+import tifffile as tif
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+import statistics as stats
+from scipy.ndimage import distance_transform_edt
+from scipy.ndimage import gaussian_filter
+import sys 
+
+
+path = sys.argv[3]
+file_name = sys.argv[1]
+seg = sys.argv[2]
+
+f = path + file_name + ".tif"
+#Getting the whole image, then isolating the channel to segment (Default is 1)
+all_channels = tif.imread(f)
+image = all_channels[:,1]
+if seg=="y":
+    #You must have a pretrained model saved somewhere to use this
+    model = models.CellposeModel(gpu=False, pretrained_model=
+                        "path/to/model"')
+
+    masks_all=[]
+    flows_all=[]
+    end_z=len(image[:])
+    
+    print("Producing the masks")
+    masks, flows, styles = model.eval(image, do_3D=False, stitch_threshold=0.5, z_axis=0)
+    print("Done")
+   
+    print("Keeping only consistant neuroblasts")
+    #This will get most false positive (INPs) out
+    coords = np.argwhere(masks)
+    values= masks[tuple(coords.T)]
+    drops = []
+    masks_clean = masks.copy()
+    
+    for i in np.unique(values):
+        n_pixels_cell = len(coords[values==i][:, 0])
+        #Tri des cellules en fonction de leur volume
+        if n_pixels_cell < 30000 :
+            drops.append(i)
+    cl=1
+    for i in np.unique(masks_clean) :
+        if i in drops :
+            masks_clean[masks_clean==i]=0
+        else :
+            masks_clean[masks_clean==i]=cl
+            cl+=1
+
+    #This will shrink the cells by 15% of their volume so that points that are nearby but that dont belong to the cells are not detected
+    print("Shrinking the cells")
+    mask = masks_clean
+    result = np.zeros_like(mask)
+    labels = np.unique(mask)
+    labels = labels[labels != 0]
+    shrink_factor= 0.15
+    
+    for label in labels:
+        cell = (mask == label)
+        shrunk = np.zeros_like(mask)
+        cl1=0
+        for slice_ in cell :
+            if np.any(slice_):
+                # distance pixel in cell-pixel of the background
+                dist = distance_transform_edt(slice_)
+                
+                max_dist = dist.max()
+                
+                #thresholding
+                threshold = max_dist * shrink_factor
+
+                shrunk = dist > threshold
+                
+                result[cl1][shrunk] = label
+                cl1+=1
+    name = path + "shrinked_" + file_name + ".tif"
+    tif.imwrite(name, result)
+                
+               
+#Detection of the protein indicating the type
+print("Production of asense mask")
+
+result = tif.imread(path + "shrinked_" + file_name + ".tif")
+asense = all_channels[:,3]
+miranda = result
+miranda = miranda>0 
+miranda = miranda.astype(np.uint16)
+asense = asense*miranda
+asense = gaussian_filter(asense, sigma=1.5)
+#This is the intensity threshold
+asense = asense>13
+asense = asense.astype(np.uint16)
+
+cl1=0
+for slice_ in asense :
+    if np.any(slice_):
+        # distance pixel cellule-pixel background
+        dist = distance_transform_edt(slice_)
+        
+        result[cl1] = dist
+    cl1+=1
+    progress = round((cl1*100)/len(asense))
+    print(f"Progression : {progress}%", end='\r')
+dist = result
+print("\nDone")
+#This is the surface threshold
+asense = dist>10
+asense = asense.astype(np.uint16)
+asense= asense*255
+tif.imwrite(path + "asense_" + file_name +
+            ".tif", asense)
+

@@ -46,8 +46,10 @@ if seg=="y":
         #Tri des cellules en fonction de leur volume
         if n_pixels_cell < 30000 :
             drops.append(i)
-    cl=1
-    for i in np.unique(masks_clean) :
+    
+    cl=0
+    labels = np.unique(masks_clean)
+    for i in labels :
         if i in drops :
             masks_clean[masks_clean==i]=0
         else :

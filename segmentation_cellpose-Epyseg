@@ -1,6 +1,4 @@
 import sys
-print(sys.executable)
-
 import os.path
 from cellpose import models, io
 import tifffile as tif
@@ -8,11 +6,11 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import statistics as stats
+import time
 from scipy.ndimage import distance_transform_edt
 from scipy.ndimage import gaussian_filter
-import sys 
 
-
+#Getting the information from main
 path = sys.argv[3]
 file_name = sys.argv[1]
 seg = sys.argv[2]
@@ -24,16 +22,17 @@ image = all_channels[:,1]
 if seg=="y":
     #You must have a pretrained model saved somewhere to use this
     model = models.CellposeModel(gpu=False, pretrained_model=
-                        "path/to/model"')
-
+                        path + "Model/Miranda2")
+                        
     masks_all=[]
     flows_all=[]
     end_z=len(image[:])
     
     print("Producing the masks")
     masks, flows, styles = model.eval(image, do_3D=False, stitch_threshold=0.5, z_axis=0)
+    tif.imwrite(path + 'masks_' + file_name + ".tif", masks)
+                
     print("Done")
-   
     print("Keeping only consistant neuroblasts")
     #This will get most false positive (INPs) out
     coords = np.argwhere(masks)
@@ -43,10 +42,10 @@ if seg=="y":
     
     for i in np.unique(values):
         n_pixels_cell = len(coords[values==i][:, 0])
-        #Tri des cellules en fonction de leur volume
+        #Sorting the cell based in their pixel number
         if n_pixels_cell < 30000 :
             drops.append(i)
-    
+            
     cl=0
     labels = np.unique(masks_clean)
     for i in labels :
@@ -55,9 +54,10 @@ if seg=="y":
         else :
             masks_clean[masks_clean==i]=cl
             cl+=1
-
+    
     #This will shrink the cells by 15% of their volume so that points that are nearby but that dont belong to the cells are not detected
     print("Shrinking the cells")
+    
     mask = masks_clean
     result = np.zeros_like(mask)
     labels = np.unique(mask)
@@ -77,11 +77,11 @@ if seg=="y":
                 
                 #thresholding
                 threshold = max_dist * shrink_factor
-
+                
                 shrunk = dist > threshold
                 
                 result[cl1][shrunk] = label
-                cl1+=1
+            cl1+=1
     name = path + "shrinked_" + file_name + ".tif"
     tif.imwrite(name, result)
                 
@@ -108,14 +108,11 @@ for slice_ in asense :
         
         result[cl1] = dist
     cl1+=1
-    progress = round((cl1*100)/len(asense))
-    print(f"Progression : {progress}%", end='\r')
 dist = result
 print("\nDone")
-#This is the surface threshold
 asense = dist>10
 asense = asense.astype(np.uint16)
 asense= asense*255
-tif.imwrite(path + "asense_" + file_name +
+tif.imwrite(path + 'asense_' + file_name +
             ".tif", asense)
 

@@ -1,5 +1,7 @@
+
 import os
 import subprocess
+import time
 import tifffile as tif
 import numpy as np
 import sys
@@ -8,9 +10,9 @@ env = os.environ.copy()
 env.pop("MPLBACKEND", None)
 
 #Before starting, make sure you made a specific directory in Documents where you will put the base image
-path = "/Users/name/Documents/directory_name/"
+path = "/Users/name/Documents/directory/"
 #Use a duplicate of your image from microscope, that you will save in the directory without modifying the name. It will make it a .tif file, that we will refer here as "base image"
-#This will automatically detect the base image you put in the directory, based on its first 2 characters
+#This will automatically detect the base image you put in the directory, based on its name's first 2 characters
 for root, dirs, files in os.walk(path):
     for i in files:
         #Enter after "i[0:2]==" the two first characters of your file's name
@@ -21,11 +23,13 @@ for root, dirs, files in os.walk(path):
             print(i)
             break
 
+        
 chinmo_yn = "n" # "y" if you want to detect protein of interest and "n" if you dont
 chinmo_channel = 2 #If you entered "y" in chinmo_yn, you must put here the channel of detection of your spots. Default is 2.
-seg = "y" #If you want to segment your cells. If "n", cells wont be segmented but type file (Detection of protein indicating type in the cells) will be produced anyway.
-detect = "y" #If you want to detect spots
+seg = "n" #If you want to segment your cells. If "n", cells wont be segmented but type file (Detection of protein indicating type in the cells) will be produced anyway.
+detect = "n" #If you want to detect spots
              #If spots are already detected and stored in a tif file, you will still have to perform Connected Components Analysis and Intensity measurements 2D/3D in FIJI (see below) 
+
 
 print("Segmentation part")
 #Segmentation script lauching. It needs special environnement called "segment" to work. Descriptions of the necessary environnements are in the README.
@@ -53,21 +57,27 @@ if detect=="y":
     print("Done")
 
 #This will produce a file that will allow you to see clearly what points have been detected in the cells
+#You may have to imagej adjust BC to see clearly the cell shapes
 #Only the points with more than 50% chance to be a real spot are kept (see below)
 detected = tif.imread(path + "detected_" + file_name + ".tif")
 miranda = tif.imread(path + "shrinked_" + file_name + ".tif")
-miranda = miranda > 0 
-miranda = miranda.astype(np.uint16)
-merge = detected * miranda
+
+miranda = miranda > 0
+miranda = miranda.astype(np.uint(16)) 
+merge = detected * miranda                  
+
+#Squaring every non significant value (<0.01) to artificially increase them and see clearly the cell shapes
+merge = np.where(merge<=0.01, np.sqrt(merge),merge)
+merge = merge.astype(np.float32)
 tif.imwrite(path + "merge_" + file_name + ".tif", merge)
 
-#Thresholding of points with high probability to be points (here, 0.5 means we keep only points with more than 50% chance to be points, according to the detection file)
+#Thresholding of points with high probability to be points (here, 0.5 means we keep only pixels with more than 50% chance to be part of a point, according to the detection AI)
 binary = detected>0.5
 #Thresholded image is made binary, so that it is usable in FIJI, and then saved in the directory as "chinmo_threshold_" followed by the name of the base file.
 binary = binary.astype(np.uint16) * 255
 tif.imwrite(path + "chinmo_threshold_" + file_name + ".tif", binary)
 
-#This will tell you when its finished so you get back on the code and do things
+#This will tell you when its finished so you get back on the pc and do things
 import winsound
 winsound.Beep(500, 700)
 winsound.Beep(500, 700)

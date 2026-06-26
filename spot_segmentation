@@ -3,8 +3,6 @@ os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 import sys
-print(sys.executable)
-
 import tifffile as tif
 import traceback
 import numpy as np
@@ -16,8 +14,6 @@ import matplotlib.pyplot as plt
 
 #Détection of spots in 3D
 #Code was kindly given by one of the writers of the Epyseg article.
-
-
 
 def predict_single_image(deepTA, input_file, **predict_parameters):
     

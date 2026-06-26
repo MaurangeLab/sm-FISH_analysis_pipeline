@@ -1,18 +1,12 @@
-# -*- coding: utf-8 -*-
-"""
-Created on Tue Apr 21 10:05:17 2026
-
-@author: ramis
-"""
 import pandas as pd
 import tifffile as tif
 import numpy as np
 import matplotlib.pyplot as plt
+import time
 import sys
 import openpyxl
 import statistics as stats
-from scipy.ndimage import distance_transform_edt
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import generate_binary_structure, binary_dilation
 
 #Getting the information from main and extracting whole base image
 file_name = sys.argv[1]
@@ -38,18 +32,19 @@ csvarray = pd.read_csv(path + file_name + '-1-intensity-measurements.csv')
 #Boolean mask to tell where theres a cell and where not (True/False)
 mask2 = maskDAPI > 0
 #Boolean mask to tell where theres a spot and where not (True/False)
-mask3 = maskProbelong > 0
+mask3 = maskProbe > 0
 
-# Pixels de chaque canal uniquement dans les cellules 
+#  Pixels that are in the cells, for each channel 
 probe_labels = maskProbe[mask2]
 dapi_labels = maskDAPI[mask2]
 asense_labels = maskAsense[mask2]
 
 #Construction of a Dataframe with every pixel's probability to be a point, for each point.
-#It will be useful to know which points in a cell belongs to the cell : We will obtain the mean probability of a spot to be a spot and compare it to other points from the same cell.
+#It will be useful to know which points in a cell belongs to the cell : We will obtain the mean probability of a spot to be a spot and compare it to other points from the same cell
 site_proba = maskDetected[mask3]
 proba_df = pd.DataFrame({"Spot_labels": maskProbelong[mask3],
                          "Proba": site_proba})
+
 
 if chinmo_yn == "y":
     chinmoIM_labels = all_channels[:, 3][mask2]
@@ -72,7 +67,7 @@ list_cells = pd.DataFrame({"Dapi_labels": dapi_labels,
 # We sort the values in the array from smaller to bigger based on the values in Dapi_labels
 list_cells = list_cells.sort_values(by="Dapi_labels", ascending=True)
 
-#Creating the lists that will constitute the columns of the final array
+#Creating the lists that will constitute the columns of the final arraydapi_labels = []
 dapi_labels = []
 asense_labels = []
 probe_labels = []
@@ -107,7 +102,6 @@ def best_points(spot_parameters):
 
 # For each cell
 for i in np.unique(list_cells["Dapi_labels"]):
-
     # If significant (see segmentation_cellpose-EPyseg code) fluorescence from type channel is detected
     if np.any(list_cells["Types"][list_cells["Dapi_labels"] == i]):
         asense_labels.append("I")
@@ -117,7 +111,7 @@ for i in np.unique(list_cells["Dapi_labels"]):
         #Adding label and pixel number in the array described before
         tri_nbII[0].append(i)
         tri_nbII[1].append(len(coordsCells[valuesCells == i][:, 0]))
-
+        
     #Gathering of mean protein of interest fluorescence (or adding a nan)
     if chinmo_yn == "y":
         chinmoIM_labels.append(stats.mean(
@@ -132,48 +126,50 @@ for i in np.unique(list_cells["Dapi_labels"]):
     if np.any(subtab):
         spot_parameters = {}
         #We retrieve the percentages of in cell volumes and the average probabilities that they are points
-        for p in np.unique(subtab):
-            if p > 0:    
-                n_stacks_merge = len(coordsMerge[valuesMerge == p][:, 0])
-                n_stacks_total = len(coordsTotal[valuesTotal == p][:, 0])
-                spot_parameters[p]= [(n_stacks_merge / n_stacks_total), round(stats.mean(proba_df["Proba"][proba_df["Spot_labels"]==p]),2)]
-                
-        #We rank the point according to their parameters described before
-        #We keep them according to their ranking
-        ranking = best_points(spot_parameters)
+        for p in np.unique(subtab[subtab!=0]):
+            #p = 762
+            n_stacks_merge = len(coordsMerge[valuesMerge == p][:, 0])
+            n_stacks_total = len(coordsTotal[valuesTotal == p][:, 0])
+            #n_stacks_merge / n_stacks_total
+            if (n_stacks_merge / n_stacks_total) > 0.5:
+                spot_parameters[p]= [round((n_stacks_merge / n_stacks_total), 2), round(stats.mean(proba_df["Proba"][proba_df["Spot_labels"]==p]),2)]
         
-        if len(ranking)==1:
-            dapi_labels.append(i)
-            probe_labels.append(ranking[0])
-            # We get the intensity
-            serMean = csvarray["Mean"][csvarray["Label"] == ranking[0]]
-            Intensities.append(serMean.iloc[0])
-            #We get the volume
-            serVol = csvarray["Volume"][csvarray["Label"] == ranking[0]]
-            Volumes.append(serVol.iloc[0])
-            spot_count += 1
-
-        
-        if len(ranking)>1 :
-            dapi_labels += 2 * [i]
-            asense_labels.append("")
-            chinmoIM_labels.append("")
-            probe_labels += ranking[0:2]
-            for a in ranking[0:2]:
+        if np.any(spot_parameters):
+            #We rank the point according to their parameters described before
+            #We keep them according to their ranking
+            ranking = best_points(spot_parameters)
+            
+            if len(ranking)==1:
+                dapi_labels.append(i)
+                probe_labels.append(ranking[0])
                 # We get the intensity
-                serMean = csvarray["Mean"][csvarray["Label"] == a]
+                serMean = csvarray["Mean"][csvarray["Label"] == ranking[0]]
                 Intensities.append(serMean.iloc[0])
                 #We get the volume
-                serVol = csvarray["Volume"][csvarray["Label"] == a]
+                serVol = csvarray["Volume"][csvarray["Label"] == ranking[0]]
                 Volumes.append(serVol.iloc[0])
                 spot_count += 1
                 
-        for b in spot_parameters.keys():
-            # Suppressing the bad ranked spots, to consider they didnt exist
-            if b not in ranking:
-                calc = (list_cells["Dapi_labels"] == i) & (list_cells["Probe_labels"] == b)
-                list_cells.loc[calc, "Probe_labels"] = 0
-                
+            if len(ranking)>1 :
+                dapi_labels += 2 * [i]
+                asense_labels.append("")
+                chinmoIM_labels.append("")
+                probe_labels += ranking[0:2]
+                for a in ranking[0:2]:
+                    # We get the intensity
+                    serMean = csvarray["Mean"][csvarray["Label"] == a]
+                    Intensities.append(serMean.iloc[0])
+                    #We get the volume
+                    serVol = csvarray["Volume"][csvarray["Label"] == a]
+                    Volumes.append(serVol.iloc[0])
+                    spot_count += 1
+        
+        elif not np.any(spot_parameters):
+            for b in np.unique(subtab):
+                if b > 0:
+                    calc = (list_cells["Dapi_labels"] == i) & (list_cells["Probe_labels"] == b)
+                    list_cells.loc[calc, "Probe_labels"] = 0
+                    
     # If not points are detected in the cell
     if not np.any(np.unique(list_cells["Probe_labels"][list_cells["Dapi_labels"] == i])):
         dapi_labels.append(i)
@@ -204,6 +200,8 @@ cores = pd.DataFrame({"Neuroblast_labels": dapi_labels,
 cl=0
 #Getting only the 8 biggest type II neuroblasts as type II
 for i in cores["Neuroblast_labels"]:
+    #Si le neuroblaste est considéré de type II mais ne fait pas partie des 8 plus gros
+    #C'est donc un INP, qui n'est pas un nbII
     if cores["Neuroblasts_Types"][cl] == "II" and i not in tri_nbII["labels"].to_list():
         cores.loc[cl, "Neuroblasts_Types"] = "I"   
     cl+=1
@@ -211,7 +209,8 @@ for i in cores["Neuroblast_labels"]:
 
 # Proportion of cells in the array in comparison to total (normally 100%)
 dapi_labels.append(str(round(len(np.unique(cores["Neuroblast_labels"]))/(
-    len(np.unique(maskDAPI))-1)*100)) + "%")  # -1 pour enlever le fond (0)
+    len(np.unique(maskDAPI))-1)*100)) + "%") # -1 to get rid of the background (0)
+
 
 #Getting the information about spots in nbI and nbII (intensity, number/cell, volume)
 spots_int_nbII = []
@@ -222,25 +221,24 @@ spots_vol_nbII = []
 spots_vol_nbI = []
 stock = 0
 n_spots_nbII = 0
+#For each cell, we get the info of the points and put them in relation with type
 for i in np.unique(cores["Neuroblast_labels"]):
     rows = (cores["Neuroblast_labels"] == i)
     t = cores["Neuroblasts_Types"][rows].iloc[0]
     if t == "II" :
-        #On récupère le nombre de points de cette cellule, même si c'est 0
+        #We get the number of points in this cell, even if its 0
         spots_num_nbII.append(cores["Spot_number/cell"][rows].iloc[0])
-        #Si il y a au moins un point on récupère les infos
+        #If there is at least one point, we get the infos
         if cores["Spot_number/cell"][rows].iloc[0] > 0 :
             spots_int_nbII.extend(cores["Spot_mean_intensity"][rows].to_list())
             spots_vol_nbII.extend(cores["Spot_volume"][rows].to_list())
-            #On ajoute 1 au compteur de points détectés dans les nbII
+            #We add 1 to the count of the spot number detected in type II neuroblasts
             n_spots_nbII += 1
     if t == "I" or t == "nan":
         spots_num_nbI.append(cores["Spot_number/cell"][rows].iloc[0])
         if cores["Spot_number/cell"][rows].iloc[0] > 0 :
             spots_int_nbI.extend(cores["Spot_mean_intensity"][rows].to_list())
             spots_vol_nbI.extend(cores["Spot_volume"][rows].to_list())
-            
-#Calculating the proportion of nbII transcription sites comparing to total
 probe_labels.append(str(round(n_spots_nbII/len(cores["Spot_labels"])*100)) + "%")
 
 # Proportion of type II neuroblasts
@@ -270,6 +268,8 @@ if chinmo_yn == "y" :
 elif chinmo_yn == "n" :
     chinmoIM_labels.append("nan")
 
+
+
 #Preparing supplementary array with more detailled data 
 #Getting the frequency of each spot number for each type
 
@@ -279,7 +279,7 @@ Type_I = [spots_num_nbI.count(0), spots_num_nbI.count(1), spots_num_nbI.count(2)
 sum_nb = sum(Type_I)
 for i in range(0, 3):
     Type_I[i]= str(Type_I[i]) + " / " + str(round(Type_I[i]*100/(sum_nb),2)) +"%"
-
+    
 #Type II
 if len(spots_num_nbII) > 0:
     Type_II = [spots_num_nbII.count(0), spots_num_nbII.count(1), spots_num_nbII.count(2)]
@@ -294,9 +294,12 @@ Mean_volume = ["nan", [], []]
 Mean_intensity = ["nan", [], []]
 for i in np.unique(cores["Neuroblast_labels"]):
     rows = cores["Neuroblast_labels"]==i
-    num = cores["Spot_number/cell"][cores["Neuroblast_labels"]==i].to_list()
-    Mean_intensity[num[0]] += cores["Spot_mean_intensity"][rows].tolist()
-    Mean_volume[num[0]].append(cores["Spot_volume"][rows].iloc[0])
+    if 1 in cores["Spot_number/cell"][rows].to_list() :
+        Mean_intensity[1] += cores["Spot_mean_intensity"][rows].tolist()
+        Mean_volume[1].append(cores["Spot_volume"][rows].iloc[0])
+    elif 2 in cores["Spot_number/cell"][rows].to_list() :
+        Mean_intensity[2] += cores["Spot_mean_intensity"][rows].tolist()
+        Mean_volume[2].append(cores["Spot_volume"][rows].iloc[0])
 Mean_intensity = ["nan", round(stats.mean(Mean_intensity[1]),2), round(stats.mean(Mean_intensity[2]), 2)]
 Mean_volume = ["nan", round(stats.mean(Mean_volume[1]),2), round(stats.mean(Mean_volume[2]),2)]
 
@@ -317,11 +320,62 @@ cores = pd.DataFrame({"Neuroblast_labels": dapi_labels,
                       "Gene_expression" : chinmoIM_labels
                       })
 
+#Creating an image that will allow us to see clearly and rapidly the results of the analysis
 
-# Creation of saved excel tabs for each array
-colonnes = cores.columns
-cores.to_excel(path + "data_" + file_name + ".xlsx",
+#First channel will simply be the segmented cells
+ch1 = maskDAPI.astype(np.uint16)
+
+#Second channel will contain green halos for each type II detected cell
+ch2 = np.zeros_like(maskDAPI, dtype=np.uint8)
+#This allow us to create a 2D halo instead of 3D one
+struct_2d = generate_binary_structure(2, 1)  
+struct_3d = struct_2d[np.newaxis, :, :]
+
+#Construction of the halos by dilating and then removing each cell to itself
+for _, row in cores.iterrows():
+    if row["Neuroblasts_Types"]== "II":
+        mask   = maskDAPI == row["Neuroblast_labels"]
+        dilated = binary_dilation(mask, structure=struct_3d, iterations=15)
+        halo   = dilated & ~mask 
+        ch2[halo]= 7
+#Encoding the channel
+ch2 = ch2.astype(np.uint8)
+
+#3rd and 4th channels will respectively be non kept spots and kept spots
+#Obtaining the list of spots in the final array (kept spots)
+spots = cores["Spot_labels"][0:-1]
+spots[spots=="no_site"]=0
+kept_labels = spots.tolist()
+
+ch3 = np.zeros_like(maskProbe, dtype=np.uint16)
+ch4 = np.zeros_like(maskProbe, dtype=np.uint16)
+
+#If a point is not in the kept ones, then he will go in the 3rd channel
+for label in np.unique(maskProbe[maskProbe!=0]):
+    if label == 0:
+        continue
+    if label in kept_labels:
+        ch4[maskProbe == label] = label
+    else:
+        ch3[maskProbe == label] = label
+
+#Creating the image, with dimensions like (N slices, N channels, N y pixels, N x pixels)
+composite = np.stack([ch1, ch2, ch3, ch4], axis=1)
+
+tif.imwrite(
+    path + "composite_" + file_name + ".tif",
+    composite,
+    imagej=True,
+    metadata={"axes": "ZCYX"}
+)
+
+# Creation of excel files to store these data as tabs
+try :
+    colonnes = cores.columns
+    cores.to_excel(path + "data_" + file_name + ".xlsx",
                columns=colonnes.tolist(), index=False, engine="openpyxl")
-colonnes = Spot_numbers.columns
-Spot_numbers.to_excel(path + "Spot_numbers_" + file_name + ".xlsx",
+    colonnes = Spot_numbers.columns
+    Spot_numbers.to_excel(path + "Spot_numbers_" + file_name + ".xlsx",
                       columns=colonnes.tolist(), index=False, engine="openpyxl")
+except PermissionError:
+    print("Permission denied. Close the opened excel tab(s) from this stack and restart.")

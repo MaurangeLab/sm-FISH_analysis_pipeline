@@ -22,7 +22,10 @@ file info + base file name + .tif
 With that in mind the files produced and the information they contain, in production order, are the following :
 
 name : base file name-1 (ex: yw_40X_21-04-1)
+
 content : Duplicate of original smFISH image. This one is not produced by the pipeline, but is the first file you need to give to the code to start analysis. It must contain 4 channels (in order): DAPI, segmentation marker (Miranda), probe, and cell type protein (Asense). The name of this file will be refered to as "file name" and used to name every other file produced.
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 name : masks_ + file name
 

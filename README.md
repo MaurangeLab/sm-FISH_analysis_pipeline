@@ -25,12 +25,15 @@ name : base file name-1 (ex: yw_40X_21-04-1)
 content : Duplicate of original smFISH image. This one is not produced by the pipeline, but is the first file you need to give to the code to start analysis. It must contain 4 channels (in order): DAPI, segmentation marker (Miranda), probe, and cell type protein (Asense). The name of this file will be refered to as "file name" and used to name every other file produced.
 
 name : masks_ + file name
+
 content : raw segmentation result.
 
 name : shrinked_ + file name 
+
 content : shrinked segmentation result, to avoid detecting spots from adjacent cells.
 
 name : detected_ + file name 
+
 content : 3D probability map, where every pixel has a value between 0 and 1 to be part of a smFISH spot.
 
 name : merge_ + file name 

@@ -58,26 +58,31 @@ name : chinmo_threshold_ + file name + -lbl
 
 content : File created after applying analysis of connected components on chinmo_threshold. Now, every point has a specific value ("label"). This file is created by yourself.
 
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 name : merge_threshold_ + file name
 
 content : Fusion of the precedent file and shrinked_ which allows to see points only in the cells. It is used to determine the volume of the spot that is inside the cell, comparing with the precedent file.
 
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 name : file name + -1-intensity-measurements
 
 content : CSV (excel) file containing every spot measurements made during the corresponding phase of the process (Label, Mean, StdDev, Max, Min, Median, Mode, NumberOfVoxels, Volume, Centers Of Mass X, Y, and Z)
 
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 name : composite_ + file name 
 
 content : May be the most useful file. It is a 4 channels image allowing you to apprehend the analysis results graphically. In channels order, you can see the detected cells, types (green halo for type 2), detected but non kept spots (spots that are detected in the wrong cell), and kept spots.
 
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 name : data_ + file name
 
 content : Excel file containing every cell, their type, spots, spot mean intensity, volume, number, and protei expression. Last row are means of every column.
 
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
 name : Spot_numbers + file name
 

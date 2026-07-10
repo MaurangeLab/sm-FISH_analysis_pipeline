@@ -30,9 +30,6 @@ content : raw segmentation result.
 name : shrinked_ + file name 
 content : shrinked segmentation result, to avoid detecting spots from adjacent cells.
 
-name : asense_ + file name 
-content : Significant asense fluorescence, after thresholding. It is used to assess the type based on if a cell exhibits significant fluorescence or not.
-
 name : detected_ + file name 
 content : 3D probability map, where every pixel has a value between 0 and 1 to be part of a smFISH spot.
 

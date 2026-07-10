@@ -6,7 +6,7 @@ from scipy.ndimage import generate_binary_structure, binary_dilation
 
 
 #Before starting, make sure you made a specific directory in Documents where you will put the base image
-path = "/Users/ramis/Documents/Repertoire/"
+path = "/Users/name/Documents/Repertoire/"
 #Use a duplicate of your image from microscope, that you will save in the directory without modifying the name. It will make it a .tif file, that we will refer here as "base image"
 #This will automatically detect the base image you put in the directory, based on its first 2 characters
 for root, dirs, files in os.walk(path):

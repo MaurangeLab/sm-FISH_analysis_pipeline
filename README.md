@@ -18,6 +18,7 @@ How to use the pipeline ?
 detect on), seg if you want segmentation, detect if you want detection of the spots.
 - Put the image(s) in the Repertoire folder
 - Make sure your path and indicated channels are right (see below), the first two letters of your images are indicated.
+- IF YOU USE MODE_ALL_FILES, make sure you put your pc sleep mode parameter to at least 4h. If it goes in sleep mode, analysis will be stopped.
 - Run Main-Epyseg
 
 How to indicate your path properly ?

@@ -2,28 +2,36 @@
 This pipeline is meant to analyse images taken from immunostaining combined sm-FISH experiments. It will put in relation cell type, gene transcription, and gene expression data.
 The spot detection model has been trained with Epyseg (Aigouy et Prud'Homme, 2020).
 
-To use these codes, you should use Spyder from anaconda, and you need the right environments. Here is how you can do :
-- In anaconda navigator, open anaconda prompt.
-- Create the first environment, "spots_analysis" with "conda create --name spots_analysis python==3.10"
-- Activate the environment : conda activate spots_analysis
-- Add kernel, which will allow your python console to work : "pip install spyder-kernels==3.14"
-- Add tifffile : "pip install tifffile", do so with openpyxl, matplotlib and pandas
-- Add specific version of numpy : "pip install numpy==1.26.4"
-This environment is finished. Quit it by "conda deactivate"
+To install the pipeline on a new pc follow these steps :
+- Download Anaconda at https://www.anaconda.com/download (Download now, skip registration)
+- Open Anaconda navigator (search it in the research bar of the pc)
+- Open Spyder from Navigator
+- Drag and drop setup_env.py, then run it, wait until it finished preparing the right environments (~10min)
+- Meanwhile, create a folder in Documents directory, named Repertoire (no accents, nothing just Repertoire)
+- Create in Repertoire a folder named "Model" where you will put your models
+-> The pipeline is ready to use
 
-Do the same thing with the segment environment. It needs to run on python 3.13. 
-It also needs spyder-kernels 3.14, cellpose 2.2.3 specifically, matplotlib, numpy 2.4.6, and tifffile.
-
-Do the same thing with the chinmospots environment. It needs to run on python 3.10.
-It also needs epyseg, fishdist, matplotlib, numpy 1.26.3, pandas, and tifffile.
+How to use the pipeline ?
+- Drag and drop every python file from this GitHub in Spyder.
+- In the tool bar, click "Console", then "New console in environment", then "Conda : spots_analysis". It launches a new console in spots_analysis environment.
+- Adjust your parameters in Main-Epyseg : mode_all_files if there are several images to analyze, mode_new if the file(s) is (are) new (automatically puts seg and
+detect on), seg if you want segmentation, detect if you want detection of the spots. Make sure the channels you indicate are well selected.
+- Put the image(s) in the Repertoire folder
+- Run Main-Epyseg.
 
 This pipeline produces several files, named after the following convention :
-file info + base file name + .tif 
+file info + base file name + .tif/.xlsx 
 With that in mind the files produced and the information they contain, in production order, are the following :
 
-name : base file name-1 (ex: yw_40X_21-04-1)
+name : base file name (ex: yw_40X_21-04.czi)
 
-content : Duplicate of original smFISH image. This one is not produced by the pipeline, but is the first file you need to give to the code to start analysis. It must contain 4 channels (in order): DAPI, segmentation marker (Miranda), probe, and cell type protein (Asense). The name of this file will be refered to as "file name" and used to name every other file produced.
+content : Base image from the microscope, with no modifications. This one is not produced by the pipeline, but is the first file you need to give to the code to start analysis. It must contain at least those three channels : segmentation marker (Miranda), probe, and cell type protein (Asense). 
+
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+name : base file name but tif file (ex: yw_40X_21-04.tif)
+
+content : Duplicate of original microscope image. This one is produced by the pipeline, and used to start analysis. It must contain at least those three channels : segmentation marker (Miranda), probe, and cell type protein (Asense). The name of this file will be refered to as "file name" and used to name every other file produced.
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -51,12 +59,6 @@ content : Fusion between detected_ and shrinked_, which allows to see probabilit
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-name : chinmo_threshold_ + file name
-
-content : detected_ file made binary after thresholding. "Chinmo" is because I built this pipeline working on the chinmo gene
-
-------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 name : chinmo_threshold_ + file name + -lbl
 
 content : File created after applying analysis of connected components on chinmo_threshold. Now, every point has a specific value ("label"). This file is created by yourself.
@@ -69,9 +71,9 @@ content : Fusion of the precedent file and shrinked_ which allows to see points 
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-name : file name + -1-intensity-measurements
+name : file name + -intensity-measurements
 
-content : CSV (excel) file containing every spot measurements made during the corresponding phase of the process (Label, Mean, StdDev, Max, Min, Median, Mode, NumberOfVoxels, Volume, Centers Of Mass X, Y, and Z)
+content : .xlsx (excel) file containing every spot measurements made during the corresponding phase of the process (Label, Mean, Max, Min, NumberOfVoxels, Volume, Centers Of Mass X, Y, and Z)
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

@@ -8,16 +8,25 @@ To install the pipeline on a new pc follow these steps :
 - Open Spyder from Navigator
 - Drag and drop setup_env.py, then run it, wait until it finished preparing the right environments (~10min)
 - Meanwhile, create a folder in Documents directory, named Repertoire (no accents, nothing just Repertoire)
-- Create in Repertoire a folder named "Model" where you will put your models
+- Create in Repertoire a folder named "Model" where you will put your AI models, that segment cells and detect spots.
 -> The pipeline is ready to use
 
 How to use the pipeline ?
 - Drag and drop every python file from this GitHub in Spyder.
-- In the tool bar, click "Console", then "New console in environment", then "Conda : spots_analysis". It launches a new console in spots_analysis environment.
-- Adjust your parameters in Main-Epyseg : mode_all_files if there are several images to analyze, mode_new if the file(s) is (are) new (automatically puts seg and
-detect on), seg if you want segmentation, detect if you want detection of the spots. Make sure the channels you indicate are well selected.
+- In the menu bar (File, Edit, Search...), click "Console", then "New console in environment", then "Conda : spots_analysis". It launches a new console in spots_analysis environment.
+- Adjust your parameters in Main-Epyseg : mode_all_files if there are several stacks to analyze, mode_new if the file(s) is (are) new (automatically puts seg and
+detect on), seg if you want segmentation, detect if you want detection of the spots.
 - Put the image(s) in the Repertoire folder
-- Run Main-Epyseg.
+- Make sure your path and indicated channels are right (see below), the first two letters of your images are indicated.
+- Run Main-Epyseg
+
+How to indicate your path properly ?
+- If your Repertoire folder is as advised in your Documents directory, then your path is "/Users/yourname/Documents/Repertoire/"
+
+How to indicate your channels properly ?
+This pipeline needs at least three channels : one on which it will perform cell segmentation (Miranda for example), one corresponding to sm-FISH spots, and one to detect cell types (Asense, GFP...). It's easy to identify their number in your image : press Maj + Z and imageJ channels tools appear. In imageJ, if you have 4 channels, their number will go from 1 to 4. In python, they will go from 0 to 3, 0 being the first channel, corresponding to 1 in imageJ. Therefore, to properly indicate their number, substract one to the number indicated in imageJ : if Miranda channel is the first one (1 in imageJ), it will be 0 in python. If your sm-FISH channel is the third in imageJ, it will be 2 in python, etc...
+You can also get the mean fluorescence from a protein of interest in every cell. To do that, precise you want to get it with the "chinmo_yn" parameter (in Main-Epyseg), then indicate the channel of your protein of interest in the "chinmoprot_channel" parameter.
+If the fourth channel is for another protein you do not want to quantify, indicate "n" in "chinmo_yn" and put the channel of the protein in question in "chinmoprot_channel". The pipeline will do nothing of this channel.
 
 This pipeline produces several files, named after the following convention :
 file info + base file name + .tif/.xlsx 

@@ -1,27 +1,62 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Thu Jul  9 14:31:35 2026
+
+@author: ramis
+"""
 import os
+import sys
 import pandas as pd
 import numpy as np
 import tifffile as tif
 from scipy.ndimage import generate_binary_structure, binary_dilation
 
+#=================================================================================================
 
-#Before starting, make sure you made a specific directory in Documents where you will put the base image
+
+
+
+#Before starting, write the path to your files here
 path = "/Users/name/Documents/Repertoire/"
-#Use a duplicate of your image from microscope, that you will save in the directory without modifying the name. It will make it a .tif file, that we will refer here as "base image"
-#This will automatically detect the base image you put in the directory, based on its first 2 characters
-for root, dirs, files in os.walk(path):
-    for i in files:
-        #Enter after "i[0:2]==" the two first characters of your file's name
-        #"i[-4:]==" ensures the file is a .tif file
-        if i[0:2]=="yw" and i[-4:]==".tif":
-            file_name= i[0:-4]
-            print("Using following file :" )
-            print(i)
-            break
+
+
+
+
+
+#==================================================================================================
+
+if "name" in path :
+    print("Write the right path before starting")
+    sys.exit()
+
+files = os.listdir(path)
+folder_name= files[0]
+files.remove("Model")
+convention_names = ["chinmo_threshold_", "composite_", "detected_", "merge_threshold_", 
+                    "merge_", "shrinked_", ".xlsx"]
+
+if os.path.isdir(path + folder_name) :
+    path = path + folder_name + "/"
+    stock=""
+    stock2=""
+    for i in os.listdir(path):
+        for a in convention_names:
+            if a == convention_names[len(convention_names)-1] and a not in i:
+                print("Using following file : ", i)
+                file_name = i[0:-4]
+                break
+            elif a in i :
+                break
+                
+                
+elif folder_name[-4:]==".tif" or folder_name[-4:]==".czi":
+    print("You submitted an image. This program needs at least the following files :",
+          "data_, -intensity-measurements.xlsx, shrinked_, merge_threshold_.",
+          "You can find information about those files in the GitHub.")
 
 #Getting the files we will use here
 data = pd.read_excel(path + "data_" + file_name + ".xlsx")
-csvarray = pd.read_csv(path + file_name + '-1-intensity-measurements.csv')
+csvarray = pd.read_excel(path + file_name + '-intensity-measurements.xlsx')
 maskDAPI = tif.imread(path + "shrinked_" + file_name + ".tif")
 maskProbe = tif.imread(path + "merge_threshold_" + file_name + ".tif")
 

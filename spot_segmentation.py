@@ -1,8 +1,11 @@
+#This code was made most entirely by Benoit Aigouy from Prud'Homme Lab at IBDM
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 
 import sys
+print(sys.executable)
+
 import tifffile as tif
 import traceback
 import numpy as np
@@ -10,6 +13,7 @@ from epyseg.deeplearning.deepl import EZDeepLearning
 from batoolset.img import Img, save_as_tiff, _rotate_along_Z_axis, _recover_orig_after_rotation_along_z_axis, normalization
 import os
 import tempfile
+import time
 import matplotlib.pyplot as plt
 
 #Détection of spots in 3D
@@ -77,6 +81,7 @@ def predict_3D_stack_from_2D_model(
     rotation_along_Z_axis_pattern=None,
     **predict_parameters
 ):
+    #stack = "/Users/ramis/Documents/Répertoire/training_stack.tif"
     # --- Load stack if path was provided
     if isinstance(stack, str):
         stack = Img(stack).astype(float)
@@ -160,18 +165,17 @@ if __name__ == '__main__':
     predict_parameters["input_channel_of_interest"] = 0
     
     path = sys.argv[2]
+    path_out = sys.argv[3]
     file_name = sys.argv[1]
-
     f = path + file_name + ".tif"
     all_channels = tif.imread(f)
-    chinmo_channel = sys.argv[3]
-    model_name = sys.argv[4]
-    model_path =  path + "Model/" + model_name
+    chinmo_channel= int(sys.argv[4])
+    model_path=  path_out + "Model/linknet-vgg16-sigmoid-0.h5"
     
     deepTA.load_or_build(model= model_path )
     
-    to_detect = all_channels[:, chinmo_channel]
-
+    to_detect = all_channels[:,chinmo_channel]
+    #plt.imshow(to_detect[15])
     out = predict_3D_stack_from_2D_model(deepTA, to_detect, apply_normalization_to_entire_stack_before=True, **predict_parameters)
     
     print(out.shape)

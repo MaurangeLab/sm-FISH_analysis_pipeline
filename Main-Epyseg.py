@@ -21,8 +21,7 @@ env.pop("MPLBACKEND", None)
 
 #---------------------------------------------------------------------------------------------------------------------------
 #Indicate your parameters here ("y" for yes, "n" for no)
-
-path = "/Users/ramis/Documents/Repertoire/"
+path = "/Users/name/Documents/Repertoire/"
 
 miranda_channel = 1 #Segmentation channel
 chinmo_channel = 2 #sm-FISH channel

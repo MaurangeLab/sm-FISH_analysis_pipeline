@@ -15,30 +15,41 @@ seg = sys.argv[2]
 miranda_channel = int(sys.argv[5])
 
 f = path + file_name + ".tif"
-#Getting the whole image, then isolating the channel to segment (Default is 1)
+#Getting the whole image, then isolating the channel to segment
 all_channels = tif.imread(f)
 image = all_channels[:,miranda_channel]
+
+
+
+#==================================================================================================
+#Model calling and segmentation part
 
 #You must have a pretrained model saved in the Model folder of your reference folder to use this
 model = models.CellposeModel(gpu=False, pretrained_model=
                     path_out + "Model/Miranda2")
                     
-masks_all=[]
-flows_all=[]
-end_z=len(image[:])
+#masks_all=[]
+#flows_all=[]
+#end_z=len(image[:])
 
 print("Producing the masks")
 masks, flows, styles = model.eval(image, do_3D=False, stitch_threshold=0.5, z_axis=0)
 tif.imwrite(path + 'masks_' + file_name + ".tif", masks)
             
 print("Done")
-            
+   
+#=================================================================================================
+
+
+         
 #This will shrink the cells by 15% of their volume so that points that are nearby but that dont belong to the cells are not detected
 print("Shrinking the cells")
 
 result = np.zeros_like(masks)
 labels = np.unique(masks)
 labels = labels[labels != 0]
+
+#====> Modify this to change the kept area percentage (0.15 = 85% of cell area is kept)
 shrink_factor= 0.15
 
 for label in labels:
@@ -61,7 +72,9 @@ for label in labels:
         cl1+=1
 name = path + "shrinked_" + file_name + ".tif"
 tif.imwrite(name, result)
-            
+
+
+      
 print("Keeping only consistant neuroblasts")
 #This will get most false positive (INPs) out
 masks = tif.imread(path + "shrinked_" + file_name + ".tif")

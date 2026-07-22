@@ -40,11 +40,12 @@ To install the pipeline on a new pc, follow these steps :
 
 Segmentation and spot detection by AI is the core of this pipeline, therefore, you might have to train you own AI models. 
 
+For cell segmentation, I chose Cellpose 2 instead of Cellpose 3 because I found a great documentation on how to use it. Cellpose 4 was just too slow, too much computing power needed and didn't work well overall. If you want to use Cellpose 3 or 4, you will need to change the version of it in segment environment and you also might have to change the model calling and segmentation part (clearly indicated) in segmentation_cellpose-Epyseg.
 In order to get a working Cellpose 2 model, you can use pretrained ones, or train your own. Using a pretrained Cellpose 2 model is very well documented. To train an adapted cell segmentation model in Cellpose 2 (really efficient in my opinion), please refer to the following article and video :
 Pachitariu and Stringer, 2022, Nature ; https://www.youtube.com/watch?v=5qANHWoubZU
-I chose to use Cellpose 2 instead of Cellpose 3 because I found a great documentation on how to use it. Cellpose 4 was just too slow, too much computing power needed and didn't work well overall.
 
-To train an adapted smFISH spots detection model with Epyseg, please refer to the following article and GitHub : Aigouy et al., 2020, Development. ;
+To train an adapted smFISH spots detection model with Epyseg, please refer to the following article and GitHub : 
+Aigouy et al., 2020, Development. ; https://github.com/baigouy/EPySeg
   
 ### How to indicate your path properly ?
 
@@ -59,25 +60,6 @@ It might change if you put it somewhere else and name it differently : Let's say
 - You can also get the mean fluorescence from a protein of interest in every cell. To do that, precise you want to get it by entering "y" in the "prot_yn" parameter (in Main-Epyseg), then indicate the channel of your protein of interest in the "prot_channel" parameter.
   
 - If the fourth channel of your stack is for another protein you do not want to quantify, indicate "n" in "prot_yn" and put the channel of the protein in question in "chinmoprot_channel". The pipeline will do nothing of this channel.
-
-## How does it work ?
-
-First, Main-Epyseg recognizes the files and folders to analyse. It determine if it's a .tif/.czi stack. 
-- In that case, it creates a folder named after it, duplicates the base stack as a .tif, and places it and itself in the new folder.
-- If it's a folder (expected to containing previous analysis results), it places itself in it. Then, it detects the base file by asking which file has none of the prefixes defined below. During this step, it searches for segmentation stack (shrinked_) and spots detection stack (detected_) and adapts the following process to their possible presence.
-
-In both cases, here's what is done next :
-1. Transmit base file path to segmentation_cellpose-Epyseg.py as a subprocess. It segments the cells, gets the smaller ones out, saves the results in the folder (as masks_ and shrinked_), then returns to Main. If analysis is done on a folder, this step is made only if "shrinked_" stack is not found in the folder.
-2. Transmit base file path to spot_segmentation.py as a subprocess. It detects spots, saves the results in the folder (as detected_), then returns to Main. If analysis is done on a folder, this step is made only if "detected_" stack is not found in the folder.
-3. Verify no error happened during the two precedent steps. If there was an error, analysis is skipped and analysis on another file (if so) starts.
-4. Main creates 3 new stacks : "merge_", "chinmo_threshold_", "merge_threshold_" explanation of what they are can be found below. We now have stacks where every spot has a specific label.
-5. Then it measures for each spot the mean, max and min intensity, the volume (in um3) and number of voxels, as well as centers of mass. It saves these measures in -intensity-measurements.
-6. It then estimates the type repartition. It means that, based on the assumption that your two groups show differences one to the other in type marker fluorescence, we expect to see two gaussians when plotting distribution of mean type marker fluorescence in every cell, resembling the following image :
-<img width="485" height="372" alt="Capture d&#39;écran 2026-07-22 114904" src="https://github.com/user-attachments/assets/82922103-b8ee-4b36-a8dc-8aff9a18f94f" />
-
-The code finds the two gaussian with GaussianMixture. Here, the two dashed lines indicates where the mean of the gaussians are. You can see that they clearly separate the group with low fluorescence and the group with high fluorescence. This kind of histogram is plotted for each analysis.
-
-7. Base file path and groups info are then passed to Spots_analysis.py as a subprocess which performs the final analysis to put everything that has been done together. Results can be visualized in "composite_" image or "data_" and "Spots_numbers_" excel files.
 
 ## What to expect from the analysis ?
 
@@ -155,10 +137,23 @@ name : Spot_numbers + file name
 
 content : representative stats (percentages, means) on those data.
 
-# What about the others .py files ?
+## How does it work ?
 
-As you may see, there are others .py files on this GitHub (other than setup_en.py and Main-Epyseg.py) that we never explained about before. Here is what they are for.
+First, Main-Epyseg recognizes the files and folders to analyse. It determine if it's a .tif/.czi stack. 
+- In that case, it creates a folder named after it, duplicates the base stack as a .tif, and places it and itself in the new folder.
+- If it's a folder (expected to containing previous analysis results), it places itself in it. Then, it detects the base file by asking which file has none of the prefixes defined below. During this step, it searches for segmentation stack (shrinked_) and spots detection stack (detected_) and adapts the following process to their possible presence.
 
-## 
+In both cases, here's what is done next :
+1. Transmit base file path to segmentation_cellpose-Epyseg.py as a subprocess. It segments the cells, gets the smaller ones out, saves the results in the folder (as masks_ and shrinked_), then returns to Main. If analysis is done on a folder, this step is made only if "shrinked_" stack is not found in the folder.
+2. Transmit base file path to spot_segmentation.py as a subprocess. It detects spots, saves the results in the folder (as detected_), then returns to Main. If analysis is done on a folder, this step is made only if "detected_" stack is not found in the folder.
+3. Verify no error happened during the two precedent steps. If there was an error, analysis is skipped and analysis on another file (if so) starts.
+4. Main creates 3 new stacks : "merge_", "chinmo_threshold_", "merge_threshold_" explanation of what they are can be found below. We now have stacks where every spot has a specific label.
+5. Then it measures for each spot the mean, max and min intensity, the volume (in um3) and number of voxels, as well as centers of mass. It saves these measures in -intensity-measurements.
+6. It then estimates the type repartition. It means that, based on the assumption that your two groups show differences one to the other in type marker fluorescence, we expect to see two gaussians when plotting distribution of mean type marker fluorescence in every cell, resembling the following image :
+<img width="485" height="372" alt="Capture d&#39;écran 2026-07-22 114904" src="https://github.com/user-attachments/assets/82922103-b8ee-4b36-a8dc-8aff9a18f94f" />
+
+The code finds the two gaussian with GaussianMixture. Here, the two dashed lines indicates where the mean of the gaussians are. You can see that they clearly separate the group with low fluorescence and the group with high fluorescence. This kind of histogram is plotted for each analysis.
+
+7. Base file path and groups info are then passed to Spots_analysis.py as a subprocess which performs the final analysis to put everything that has been done together. Results can be visualized in "composite_" image or "data_" and "Spots_numbers_" excel files.
 
 

@@ -6,6 +6,8 @@ The sm-FISH spots detection model has been trained with Epyseg (Aigouy et Prud'H
 
 The cell segmentation model has been trained from a nuclei model in Cellpose 2.
 
+To try it with an example stack and pre-trained models, go in "Tutorial" folder of this GitHub.
+
 ## Installation
 
 To install the pipeline on a new pc, follow these steps :

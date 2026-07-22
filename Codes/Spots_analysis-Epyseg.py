@@ -15,7 +15,10 @@ chinmo_yn = sys.argv[2]
 asense_channel = int(sys.argv[5])
 chinmoprot_channel = int(sys.argv[3])
 path = sys.argv[4]
-
+group1 = sys.argv[6]
+group2 = sys.argv[7]
+marked = sys.argv[8]
+not_marked = group1 if group2==marked else group2
 
 # Extracting respectively : whole 4D stack, cell segmentation image, only spot in cells image, all spots image, protein indicating type image, spot detection from AI image, measurements array
 all_channels = tif.imread(path + file_name + ".tif")
@@ -111,9 +114,9 @@ proba = gmm.predict_proba(intensities)
 means = gmm.means_.flatten()
 low_group_idx = np.argmin(means)
 
-df["typeII"] = proba[:, low_group_idx]
+df[not_marked] = proba[:, low_group_idx]
 proba2=np.delete(proba, low_group_idx, axis=1)
-df["typeI"] = proba2 
+df[marked] = proba2 
 
 #---------------------------------------------------------------------------
 
@@ -132,17 +135,17 @@ def best_points(spot_parameters):
 # For each cell
 for i in np.unique(list_cells["Dapi_labels"]):
     #Comparing probabilities to be a type I or type II according to GaussianMixture
-    if df["typeI"][df["cell_label"]==i].iloc[0]>df["typeII"][df["cell_label"]==i].iloc[0]:
-        asense_labels.append("I")
-    elif  df["typeI"][df["cell_label"]==i].iloc[0]<df["typeII"][df["cell_label"]==i].iloc[0]:
-        asense_labels.append("II")
+    if df[marked][df["cell_label"]==i].iloc[0]>df[not_marked][df["cell_label"]==i].iloc[0]:
+        asense_labels.append(marked)
+    elif  df[marked][df["cell_label"]==i].iloc[0]<df[not_marked][df["cell_label"]==i].iloc[0]:
+        asense_labels.append(not_marked)
         
     #Gathering of mean protein of interest fluorescence (or adding a nan)
     if chinmo_yn == "y":
         chinmoIM_labels.append(stats.mean(
             list_cells["Gene_expression"][list_cells["Dapi_labels"] == i]))
     elif chinmo_yn == "n":
-        chinmoIM_labels.append("nan")
+        chinmoIM_labels.append(np.nan)
         
     spot_count = 0
     # Starting to count and select spots in the cell
@@ -169,7 +172,7 @@ for i in np.unique(list_cells["Dapi_labels"]):
                 probe_labels.append(ranking[0])
                 # We get the intensity
                 serMean = csvarray["Mean"][csvarray["Label"] == ranking[0]]
-                Intensities.append(serMean.iloc[0])
+                Intensities.append(round(serMean.iloc[0],2))
                 #We get the volume
                 serVol = csvarray["Volume"][csvarray["Label"] == ranking[0]]
                 Volumes.append(serVol.iloc[0])
@@ -184,7 +187,7 @@ for i in np.unique(list_cells["Dapi_labels"]):
                 for a in ranking[0:2]:
                     # We get the intensity
                     serMean = csvarray["Mean"][csvarray["Label"] == a]
-                    Intensities.append(serMean.iloc[0])
+                    Intensities.append(round(serMean.iloc[0],2))
                     #We get the volume
                     serVol = csvarray["Volume"][csvarray["Label"] == a]
                     Volumes.append(serVol.iloc[0])
@@ -228,12 +231,12 @@ Mean_volume = [np.nan, 0, 0]
 #For every line of the Dataframe obtained by analysis, we get every information :
     #Spot number per cell type, mean intensity, volume...
 for _, row in cores.iterrows():
-        if row["Neuroblasts_Types"]=="II":
+        if row["Neuroblasts_Types"]==group2:
             if pd.isna(row["Spot_number/cell"]) or row["Spot_number/cell"]=="":
                 Type_II[2] += 1
             else :
                 Type_II[row["Spot_number/cell"]] += 1
-        elif row["Neuroblasts_Types"]=="I":
+        elif row["Neuroblasts_Types"]==group1:
             if pd.isna(row["Spot_number/cell"]) or row["Spot_number/cell"]=="":
                 Type_I[2] += 1
             else :
@@ -259,11 +262,18 @@ Type_II = [str(Type_II[0]) + " / " + str(round((Type_II[0]*100)/sum(Type_II),2))
 
 #Creation of the dataframe
 Spot_numbers = pd.DataFrame({"Spot_number/cell": SN,
-                             "Type I": Type_I,
-                             "Type II": Type_II,
+                             group1: Type_I,
+                             group2: Type_II,
                              "Mean_intensities": Mean_intensity,
                              "Mean_volumes": Mean_volume})
 
+# Creation of excel files to store these data as tabs
+colonnes = cores.columns
+cores.to_excel(path + "data_" + file_name + ".xlsx",
+           columns=colonnes.tolist(), index=False, engine="openpyxl")
+colonnes = Spot_numbers.columns
+Spot_numbers.to_excel(path + "Spot_numbers_" + file_name + ".xlsx",
+                  columns=colonnes.tolist(), index=False, engine="openpyxl")
 
 #Creating an image that will allow us to see clearly and rapidly the results of the analysis
 
@@ -278,11 +288,11 @@ struct_3d = struct_2d[np.newaxis, :, :]
 
 #Construction of the halos by dilating and then removing each cell to itself
 for _, row in cores.iterrows():
-    if row["Neuroblasts_Types"]== "II":
+    if row["Neuroblasts_Types"]== group2:
         mask   = maskDAPI == row["Neuroblast_labels"]
         dilated = binary_dilation(mask, structure=struct_3d, iterations=15)
         halo   = dilated & ~mask 
-        ch2[halo]= df["typeII"][df["cell_label"]==row["Neuroblast_labels"]].iloc[0]
+        ch2[halo]= df[group2][df["cell_label"]==row["Neuroblast_labels"]].iloc[0]
 
 
 #3rd and 4th channels will respectively be non kept spots and kept spots
@@ -310,22 +320,6 @@ tif.imwrite(
     path + "composite_" + file_name + ".tif",
     composite,
     imagej=True,
+    format = "TIFF",
     metadata={"axes": "ZCYX"}
 )
-
-# Creation of excel files to store these data as tabs
-try :
-    colonnes = cores.columns
-    cores.to_excel(path + "data_" + file_name + ".xlsx",
-               columns=colonnes.tolist(), index=False, engine="openpyxl")
-    colonnes = Spot_numbers.columns
-    Spot_numbers.to_excel(path + "Spot_numbers_" + file_name + ".xlsx",
-                      columns=colonnes.tolist(), index=False, engine="openpyxl")
-except PermissionError:
-    print("Permission denied. Close the opened excel tab(s) from this stack and restart","from input line in Main-Epyseg")
-
-
-
-
-
-

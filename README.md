@@ -1,9 +1,12 @@
 # sm-FISH_analysis_pipeline
-# Introduction
+## Introduction
 This pipeline is an easy-to-use mean to analyse 3D stacks taken from immunostaining combined sm-FISH experiments. It can put in relation cell type, gene transcription, and gene expression data. It uses AI to recognize cells and sm-FISH spots, then estimates type of a cell based on the assumption that your two groups show differences in type marker fluorescence.
+
 The sm-FISH spots detection model has been trained with Epyseg (Aigouy et Prud'Homme, 2020).
+
 The cell segmentation model has been trained from a nuclei model in Cellpose 2.
 
+## Installation
 To install the pipeline on a new pc, follow these steps :
 - Download Anaconda at https://www.anaconda.com/download (Download now, skip registration)
 - Open Anaconda navigator (search it in the research bar of the pc)
@@ -14,6 +17,7 @@ To install the pipeline on a new pc, follow these steps :
 - Create in Repertoire a folder named "Model" where you will put your AI models, that segment cells and detect spots.
 -> The pipeline is ready to use
 
+## How to use it ?
 How to use the pipeline ?
 - Drag and drop Main-Epyseg from Pipeline to Spyder.
 - In the menu bar (File, Edit, Search...), click "Console", then "New console in environment", then "Conda : spots_analysis". It launches a new console in spots_analysis environment, that setup_env created before. It contains every library needed for Main to turn.
@@ -32,9 +36,10 @@ How to indicate your channels properly ?
 - You can also get the mean fluorescence from a protein of interest in every cell. To do that, precise you want to get it with the "chinmo_yn" parameter (in Main-Epyseg), then indicate the channel of your protein of interest in the "chinmoprot_channel" parameter.
 - If the fourth channel is for another protein you do not want to quantify, indicate "n" in "chinmo_yn" and put the channel of the protein in question in "chinmoprot_channel". The pipeline will do nothing of this channel.
 
+## What to expect from the analysis ?
 This pipeline produces several files, named after the following convention :
 file info + base file name + .tif/.xlsx 
-With that in mind the files produced and the information they contain, in production order, are the following :
+With that in mind, the files produced and the information they contain, in production order, are the following :
 
 name : base file name (ex: yw_40X_21-04.czi)
 

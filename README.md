@@ -18,7 +18,7 @@ To install the pipeline on a new pc, follow these steps :
 -> The pipeline is ready to use
 
 ## How to use it ?
-How to use the pipeline ?
+### How to use the pipeline ?
 - Drag and drop Main-Epyseg from Pipeline to Spyder.
 - In the menu bar (File, Edit, Search...), click "Console", then "New console in environment", then "Conda : spots_analysis". It launches a new console in spots_analysis environment, that setup_env created before. It contains every library needed for Main to turn.
 - Adjust your parameters in Main-Epyseg : indicate the name of your two populations of cells, one of which is marked by immunofluorescence ("group1", "group2"). The group2 population will be the one you will see indicated by a halo in the final stack ("composite_", see below), that's why it should contain the name of your population of interest. Indicate which of those population is marked by immunofluorescence ("marked").

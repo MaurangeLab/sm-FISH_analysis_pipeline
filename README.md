@@ -2,7 +2,7 @@
 ## Introduction
 This pipeline is an easy-to-use mean to analyse 3D stacks taken from immunostaining combined sm-FISH experiments. It can put in relation cell type, gene transcription, and gene expression data. It uses AI to recognize cells and sm-FISH spots, then estimates type of a cell based on the assumption that your two groups show differences in type marker fluorescence.
 
-To try it with an example stack and pre-trained models, go in "Tutorial" folder of this GitHub.
+To try it with an example stack and pre-trained models, see Tutorial folder.
 
 ## Installation
 

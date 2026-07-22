@@ -12,7 +12,7 @@ To install the pipeline on a new pc, follow these steps :
 - Download Anaconda at https://www.anaconda.com/download (Download now, skip registration)
 - Open Anaconda navigator (search it in the research bar of the pc)
 - Open Spyder from Navigator
-- Create a directory in Documents where you will put every python file from this GitHub. Let's say you called it "Pipeline".
+- Create a directory in Documents where you will put every python file from the Codes folder of this GitHub. Let's say you called it "Pipeline".
 - Drag and drop setup_env.py from Pipeline to Spyder, then run it, wait until it finished preparing the right environments (~10min).
 - Meanwhile, create a folder in Documents directory, named Repertoire (no accents, nothing just Repertoire).
 - Create in Repertoire a folder named "Model" where you will put your AI models, that segment cells and detect spots.

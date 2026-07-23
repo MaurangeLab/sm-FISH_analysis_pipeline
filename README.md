@@ -121,7 +121,7 @@ content : .xlsx (excel) file containing every spot measurements made during the 
 
 name : composite_ + file name 
 
-content : May be the most useful file. It is a 4 channels stack allowing you to apprehend the analysis results graphically. In channels order, you can see the detected cells, types (green halo for group2), detected but non kept spots (spots that are detected in the wrong cell), and kept spots. When opening it, you might have to "Make Composite" with imageJ, and then use Brightness and Contrast.
+content : May be the most useful file. It is a 4 channels stack allowing you to apprehend the analysis results graphically. In channels order, you can see the detected cells, types (green halo for group2), detected but non kept spots (spots that are detected in the wrong cell), and kept spots. When opening it, you might have to "Make Composite" with imageJ, and then use Brightness and Contrast. To know more about how to use it, please go to the "Results" part of Tutorial.
 
 ------------------------------------------------------------------------------------------------------------------------------------------------------------------
 

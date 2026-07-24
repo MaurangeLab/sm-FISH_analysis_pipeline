@@ -1,4 +1,4 @@
-#This code was made almost entirely by AI to save time
+#This code was made almost entirely by AI
 import subprocess
 import sys
 

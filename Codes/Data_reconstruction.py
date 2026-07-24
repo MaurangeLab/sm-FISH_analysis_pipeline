@@ -19,16 +19,19 @@ path = "/Users/name/Documents/Repertoire/"
 
 #==================================================================================================
 
-if "name" in path :
+if "name" in path:
     print("Write the right path before starting")
     sys.exit()
 
-files = os.listdir(path)
+try:
+    files = os.listdir(path)
+except FileNotFoundError:
+    print("Write the right path before starting")
 folder_name= files[0]
 files.remove("Model")
-convention_names = ["chinmo_threshold_", "composite_", "detected_", "merge_threshold_", 
+convention_names = ["masks", "chinmo_threshold_", "composite_", "detected_", "merge_threshold_", 
                     "merge_", "shrinked_", ".xlsx"]
-
+    
 if os.path.isdir(path + folder_name) :
     path = path + folder_name + "/"
     stock=""
@@ -43,8 +46,8 @@ if os.path.isdir(path + folder_name) :
                 break
                 
                 
-elif folder_name[-4:]==".tif" or folder_name[-4:]==".czi":
-    print("You submitted an image. This program needs at least the following files :",
+else :
+    print("The file you submitted is not part of files needed, which are : ",
           "data_, -intensity-measurements.xlsx, shrinked_, merge_threshold_.",
           "You can find information about those files in the GitHub.")
 
@@ -54,25 +57,35 @@ csvarray = pd.read_excel(path + file_name + '-intensity-measurements.xlsx')
 maskDAPI = tif.imread(path + "shrinked_" + file_name + ".tif")
 maskProbe = tif.imread(path + "merge_threshold_" + file_name + ".tif")
 
-#Checking every spot for changes
+#Checking every cell for changes
 cl = -1
+stocklabel= ""
 for _, row in data.iterrows():
     if cl<len(data):
         cl+=1
         if row["Spot_labels"]!= 0 and not pd.isna(row["Spot_labels"]) and row["Spot_labels"] in csvarray["Label"].tolist():
             data.loc[data["Spot_labels"]==row["Spot_labels"], "Spot_mean_intensity"] = csvarray["Mean"][csvarray["Label"]==row["Spot_labels"]].iloc[0]
             data.loc[data["Spot_labels"]==row["Spot_labels"], "Spot_volume"] = csvarray["Volume"][csvarray["Label"]==row["Spot_labels"]].iloc[0]
-
-        if row["Spot_labels"]== 0 or pd.isna(row["Spot_labels"]):
-            if data["Neuroblast_labels"][cl-1]==row["Neuroblast_labels"]:
-                data = data.drop([cl])
-                cl= cl-1
-                data.loc[cl, "Spot_number/cell"] += -1
-                
-            elif data["Neuroblast_labels"][cl-1]!=row["Neuroblast_labels"]:
+            if data["Neuroblast_labels"][cl-1]!=row["Neuroblast_labels"]:
+                if data["Neuroblast_labels"][cl+1]!=row["Neuroblast_labels"]:
+                    data.loc[cl, "Spot_number/cell"] = 1
+                else :
+                    data.loc[cl, "Spot_number/cell"] = 2
+            else :
+                data.loc[cl, "Spot_number/cell"] = np.nan
+        if (row["Spot_labels"]== 0 or pd.isna(row["Spot_labels"])) and cl>0:
+            
+            if data["Neuroblast_labels"][cl-1]!=row["Neuroblast_labels"]:
                 data.loc[data["Spot_labels"]==row["Spot_labels"], "Spot_mean_intensity"] = "no_site"
                 data.loc[data["Spot_labels"]==row["Spot_labels"], "Spot_volume"] = "no_site"
-
+                data.loc[data["Spot_labels"]==row["Spot_labels"], "Spot_number/cell"] = 0
+        
+            elif data["Neuroblast_labels"][cl-1]==row["Neuroblast_labels"]:
+                data = data.drop([cl])
+                cl+=-1
+                data.loc[cl, "Spot_number/cell"] += -1
+                data = data.reset_index(drop=True)
+                
 #Preparing a new dataframe ("Spot_numbers") which will contain representative information about the analysis
 SN = [0, 1, 2]
 Type_I = [0, 0, 0]
@@ -135,6 +148,7 @@ try :
                       columns=colonnes.tolist(), index=False, engine="openpyxl")
 except PermissionError:
     print("Permission denied. Close the opened excel tab(s) from this stack and restart.")
+    sys.exit()
 
 
 

@@ -23,7 +23,7 @@ To install the pipeline on a new pc, follow these steps :
   
 - In the menu bar (File, Edit, Search...), click "Console", then "New console in environment", then "Conda : spots_analysis". It launches a new console in spots_analysis environment, that setup_env created before. It contains every library needed for Main to turn.
   
-- Adjust your parameters in Main-Epyseg : indicate the name of your two populations of cells ("group1", "group2"), one of which must be marked by immunofluorescence ("marked"). The "group2" population will be the one you will see indicated by a halo in the final stack ("composite_", see below), that's why it should contain the name of your population of interest.
+- Adjust your parameters in Main-Epyseg : indicate the name of your segmentation and spot detection models, if you have your own (see below). If you don't, ours are available on my google drive (see Tutorial). Indicate the name of your two populations of cells ("group1", "group2"), one of which must be marked by immunofluorescence ("marked"). The "group2" population will be the one you will see indicated by a halo in the final stack ("composite_", see below), that's why it should contain the name of your population of interest.
   
 - Put the stacks(s) in the Repertoire folder (.tif or .czi), it will create a new folder for each stack, named after them and containing the results of analysis.
 - You might also want to analyse again some stacks you analysed before, to change settings for example. In this case, put the full folder where the analysis results of this stack are stored.
@@ -44,6 +44,8 @@ Pachitariu and Stringer, 2022, Nature ; https://www.youtube.com/watch?v=5qANHWou
 
 To train an adapted smFISH spots detection model with Epyseg, please refer to the following article and GitHub : 
 Aigouy et al., 2020, Development. ; https://github.com/baigouy/EPySeg
+
+Once you trained them, put them in the "Model" folder of Repertoire, and indicate them in Main-Epyseg parameters.
   
 ### How to indicate your path properly ?
 
@@ -58,7 +60,7 @@ It might change if you put it somewhere else and name it differently : Let's say
 - You can also get the mean fluorescence from a protein of interest in every cell. To do that, precise you want to get it by entering "y" in the "prot_yn" parameter (in Main-Epyseg), then indicate the channel of your protein of interest in the "prot_channel" parameter.
   
 - If the fourth channel of your stack is for another protein you do not want to quantify, indicate "n" in "prot_yn" and put the channel of the protein in question in "chinmoprot_channel". The pipeline will do nothing of this channel.
-- 
+
 ## What to expect from the analysis ?
 
 This pipeline produces several files, named after the following convention :

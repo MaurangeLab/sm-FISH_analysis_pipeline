@@ -149,12 +149,12 @@ As a lot of tools, this pipeline can make errors. Wrong typing of a cell, wrong 
 
 Once you finished modifying data, save it (Ctrl-S) and close it. Put the folder drom which this file comes in Repertoire and make sure your path in Data_reconstruction is right. Launch Data_reconstruction : It will modify data_ (correct spots intensities and volumes) Spots_numbers_ (recalculating means and proportions) and composite_ (changing channels for changed spots, adding/removing halos).
 
-## How to gather data from a lot of analyses in the same condition ?
+## How to gather data from a lot of analyses ?
 
-Once you finished imaging a whole condition (replicates of control, tumoral, with/without treatment...), you might want to gather all the data produced to compare it with another condition. Gatherer.py is there to help you. You only have to put every folder containing analysis from this condition in Repertoire, then drag and drop Gatherer.py in Spyder : verify you entered the right path, add a group name for this condition and indicate the names of cell populations that are represented in your data. Launch Gatherer.
+Once you finished imaging and analysing a whole condition (replicates of control, tumoral, with/without treatment...), you might want to gather all the data produced to compare it with another condition. Gatherer.py is there to help you. You only have to put every folder containing analysis from this condition in Repertoire, then drag and drop Gatherer.py in Spyder : verify you entered the right path, add a group name for this condition and indicate the names of cell populations that are represented in your data. Launch Gatherer.
 In a few seconds, you will get a new folder named after the group name you added, containing two excel files :
 - One named Global_data_, containing intensity and volume of every spot from every analysis, sorted by type of the parent cell and by number of spot in the cell (1 ou 2).
-- One named Global_numbers_, containing
+- One named Global_numbers_, containing spot number per cell proportions and mean intensities and volumes, from every sample.
 
 ## How does it work ?
 

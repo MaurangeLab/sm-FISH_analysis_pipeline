@@ -13,6 +13,7 @@ path_out = sys.argv[4]
 file_name = sys.argv[1]
 seg = sys.argv[2]
 miranda_channel = int(sys.argv[5])
+model_name = sys.argv[6]
 
 f = path + file_name + ".tif"
 #Getting the whole image, then isolating the channel to segment
@@ -26,7 +27,7 @@ image = all_channels[:,miranda_channel]
 
 #You must have a pretrained model saved in the Model folder of your reference folder to use this
 model = models.CellposeModel(gpu=False, pretrained_model=
-                    path_out + "Model/Miranda2")
+                    path_out + "Model/" + model_name)
                     
 #masks_all=[]
 #flows_all=[]

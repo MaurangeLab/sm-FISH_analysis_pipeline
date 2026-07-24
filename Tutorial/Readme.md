@@ -38,7 +38,7 @@ If you put your mouse on a cell while being on the first channel, you should see
 <img width="753" height="127" alt="Capture d&#39;écran 2026-07-22 164503" src="https://github.com/user-attachments/assets/d0e19454-9d3f-4f8c-83c7-36fffcefae6c" />
 
 
-Putting your mouse on the green halo of a cell while being in the second channel will show you just as before the probability of this cell to be a part of the interest group, which is set  by default to be the group that is not marked by the type marker (low fluorescence group). This probability is determined by Gaussian Mixture Library.
+Putting your mouse on the green halo of a cell while being in the second channel will show you just as before the probability of this cell to be a part of the interest group. This probability is determined by Gaussian Mixture Library.
 
 In the cell number 6 at z = 1, you should see a little purple point. This one is part of the third channel and has not been kept, either because its probability to be a point according to the model was not high enough, or because an important part of its volume was detected outside of the cell, which means the point does probably not belong to the cell. You can still see its number in imageJ by being in the third channel and putting your mouse on it.
 

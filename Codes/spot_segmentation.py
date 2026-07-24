@@ -1,10 +1,9 @@
-#This code was made most entirely by Benoit Aigouy from Prud'Homme Lab at IBDM
 import os
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 os.environ["CUDA_VISIBLE_DEVICES"]=""
 
-import sys
-print(sys.executable)
+import sys, io
+
 
 import tifffile as tif
 import traceback
@@ -63,14 +62,16 @@ def predict_single_image(deepTA, input_file, **predict_parameters):
         )
         
     except Exception:
-        traceback.print_exc()
+        #traceback.print_exc()
+        print("predict_generator failed to build")
     
     finally:
         # Always remove temporary file
         try:
             os.remove(name)
         except Exception:
-            traceback.print_exc()
+            #traceback.print_exc()
+            pass
 
     return results
 
@@ -170,7 +171,8 @@ if __name__ == '__main__':
     f = path + file_name + ".tif"
     all_channels = tif.imread(f)
     chinmo_channel= int(sys.argv[4])
-    model_path=  path_out + "Model/linknet-vgg16-sigmoid-0.h5"
+    spot_model_name = sys.argv[5]
+    model_path=  path_out + "Model/" + spot_model_name
     
     deepTA.load_or_build(model= model_path )
     

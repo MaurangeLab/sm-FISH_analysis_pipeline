@@ -11,15 +11,16 @@ from sklearn.mixture import GaussianMixture
     
 #Getting the information from main and extracting whole base image
 file_name = sys.argv[1]
-chinmo_yn = sys.argv[2]
-asense_channel = int(sys.argv[5])
-chinmoprot_channel = int(sys.argv[3])
+prot_yn = sys.argv[2]
+type_channel = int(sys.argv[5])
+prot_channel = int(sys.argv[3])
 path = sys.argv[4]
 group1 = sys.argv[6]
 group2 = sys.argv[7]
 marked = sys.argv[8]
-not_marked = group1 if group2==marked else group2
 
+#Setting the not_marked group
+not_marked = group1 if group2==marked else group2
 # Extracting respectively : whole 4D stack, cell segmentation image, only spot in cells image, all spots image, protein indicating type image, spot detection from AI image, measurements array
 all_channels = tif.imread(path + file_name + ".tif")
 
@@ -50,8 +51,8 @@ site_proba = maskDetected[mask3]
 proba_df = pd.DataFrame({"Spot_labels": maskProbelong[mask3],
                          "Proba": site_proba})
 
-if chinmo_yn == "y":
-    chinmoIM_labels = all_channels[:, chinmoprot_channel][mask2]
+if prot_yn == "y":
+    chinmoIM_labels = all_channels[:, prot_channel][mask2]
 else:
     #Producing a mask of nan (Not A Number, undefined values) in case we dont have information about protein of interest
     chinmoIM_labels = np.zeros_like(maskDAPI)
@@ -96,7 +97,7 @@ valuesCells = maskDAPI[tuple(coordsCells.T)]
 distrib = []
 dapi_list = []
 
-maskAsense = all_channels[:,asense_channel]
+maskAsense = all_channels[:,type_channel]
 for i in np.unique(maskDAPI[maskDAPI!=0]):
     distrib.append(stats.mean(maskAsense[maskDAPI==i].tolist()))
     dapi_list.append(i)
@@ -120,6 +121,10 @@ df[marked] = proba2
 
 #---------------------------------------------------------------------------
 
+#substract = (maskProbelong==0).astype(np.uint8) * all_channels[:, 2]
+#substract = substract.mean()
+
+
 #A function that the main loop will use to determine the best points in a cell based on their volume in the cell and probability to be a point
 #If more than 2 points are detected, only the top 2 will stay
 def best_points(spot_parameters):
@@ -141,10 +146,10 @@ for i in np.unique(list_cells["Dapi_labels"]):
         asense_labels.append(not_marked)
         
     #Gathering of mean protein of interest fluorescence (or adding a nan)
-    if chinmo_yn == "y":
+    if prot_yn == "y":
         chinmoIM_labels.append(stats.mean(
             list_cells["Gene_expression"][list_cells["Dapi_labels"] == i]))
-    elif chinmo_yn == "n":
+    elif prot_yn == "n":
         chinmoIM_labels.append(np.nan)
         
     spot_count = 0
@@ -158,8 +163,11 @@ for i in np.unique(list_cells["Dapi_labels"]):
             #p = 343
             n_stacks_merge = len(coordsMerge[valuesMerge == p][:, 0])
             n_stacks_total = len(coordsTotal[valuesTotal == p][:, 0])
-            #n_stacks_merge / n_stacks_total
+            #n_stacks_merge / n_stacks_total corresponds to the porportion of the number of voxels 
+            #that are into the parent cell, and is calculated for every spot
             if (n_stacks_merge / n_stacks_total) > 0.5:
+                #If more than 50% of the spot volume is in the cell, we add the precedent 
+                #information as well as mean probability of every voxel constituting the spot
                 spot_parameters[p]= [round((n_stacks_merge / n_stacks_total), 2), round(stats.mean(proba_df["Proba"][proba_df["Spot_labels"]==p]),2)]
         
         if np.any(spot_parameters):
@@ -172,7 +180,7 @@ for i in np.unique(list_cells["Dapi_labels"]):
                 probe_labels.append(ranking[0])
                 # We get the intensity
                 serMean = csvarray["Mean"][csvarray["Label"] == ranking[0]]
-                Intensities.append(round(serMean.iloc[0],2))
+                Intensities.append(round((serMean.iloc[0]),2))
                 #We get the volume
                 serVol = csvarray["Volume"][csvarray["Label"] == ranking[0]]
                 Volumes.append(serVol.iloc[0])
@@ -187,7 +195,7 @@ for i in np.unique(list_cells["Dapi_labels"]):
                 for a in ranking[0:2]:
                     # We get the intensity
                     serMean = csvarray["Mean"][csvarray["Label"] == a]
-                    Intensities.append(round(serMean.iloc[0],2))
+                    Intensities.append(round((serMean.iloc[0]),2))
                     #We get the volume
                     serVol = csvarray["Volume"][csvarray["Label"] == a]
                     Volumes.append(serVol.iloc[0])
@@ -250,10 +258,14 @@ for _, row in cores.iterrows():
                 Mean_volume[row["Spot_number/cell"]] += row["Spot_volume"]
 
 #Getting the intensity, volume and spot number means for every condition
-Mean_intensity = [np.nan, Mean_intensity[1]/(Type_I[1]+Type_II[1])] + ([Mean_intensity[2]/((Type_I[2]+Type_II[2])*2)] if 2 in cores["Spot_number/cell"].tolist() else [0])
-
-Mean_volume = [np.nan, Mean_volume[1]/(Type_I[1]+Type_II[1])] + ([Mean_volume[2]/((Type_I[2]+Type_II[2])*2)] if 2 in cores["Spot_number/cell"].tolist() else [0])
-
+try :
+    Mean_intensity = [np.nan, Mean_intensity[1]/(Type_I[1]+Type_II[1])] + ([Mean_intensity[2]/((Type_I[2]+Type_II[2])*2)] if 2 in cores["Spot_number/cell"].tolist() else [0])
+    
+    Mean_volume = [np.nan, Mean_volume[1]/(Type_I[1]+Type_II[1])] + ([Mean_volume[2]/((Type_I[2]+Type_II[2])*2)] if 2 in cores["Spot_number/cell"].tolist() else [0])
+except ZeroDivisionError:
+    Mean_intensity = [np.nan, 0, 0]
+    Mean_volume = [np.nan, 0, 0]
+    
 Type_I = [str(Type_I[0]) + " / " + str(round((Type_I[0]*100)/sum(Type_I),2))+"%", 
           str(Type_I[1]) + " / " + str(round((Type_I[1]*100)/sum(Type_I),2))+"%"] + ([str(Type_I[2]) + " / " + str(round((Type_I[2]*100)/sum(Type_I),2))+"%"] if 2 in cores["Spot_number/cell"].tolist() else [0])
 
@@ -320,6 +332,6 @@ tif.imwrite(
     path + "composite_" + file_name + ".tif",
     composite,
     imagej=True,
-    format = "TIFF",
     metadata={"axes": "ZCYX"}
 )
+

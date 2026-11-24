@@ -1,300 +1,180 @@
-# [PIPELINE NAME]
 
-**Single-cell analysis of smFISH in 3D confocal stacks — from a Zeiss image to one table per cell, with tools to check, correct and explore the results.**
+# sm-FISH_analysis_pipeline
+## Introduction
 
-<p align="center">
-  <img src="docs/overview.png" alt="Overview of the pipeline" width="900">
-</p>
+**This pipeline is an easy to use tool to analyse 3D stacks obtained from immunostaining combined with sm-FISH experiments.**
 
-[PIPELINE NAME] takes 3D confocal stacks (Zeiss `.czi` or `.tif`), segments the cells, detects the smFISH spots, measures them, corrects them for the local background, converts them into relative or absolute quantities, classifies the cells with a protein marker, and writes everything in tables where **each row is a spot and each block of rows is a cell**.
+<img width="932" height="569" alt="Capture d&#39;écran 2026-11-23 153345" src="https://github.com/user-attachments/assets/b2302d25-2da6-48c8-a253-18bb1f2e6c3d" />
 
-It is made of:
+This pipeline is able to segment cells (using mainly Cellpose), determine their types based on a cell type marker, segment smFISH spots (Spotiflow, Epyseg), and perform measurements on these cells and spots. For each analyzed stack, it returns a folder containing numerous sta
 
-- an **analysis pipeline** (`Newmain.py`), which can run without any interface;
-- a **desktop application** (`GUI4-globnorm.py`) with four tabs: *Analysis*, *Viewer*, *Data Explorer* and *Spotiflow training*;
-- a few **child scripts** that run in their own conda environments, so that tools with incompatible requirements (Cellpose 2, 3 and 4, TensorFlow/EpySeg, PyTorch/Spotiflow) live together.
-
-> Status: used in the lab, under development. There is no version number, installer or automatic test suite yet. See [Known limits](#known-limits).
-
----
-
-## Contents
-
-1. [What it does](#what-it-does)
-2. [Installation](#installation)
-3. [Quick start](#quick-start)
-4. [User guide](#user-guide)
-5. [Inputs and outputs](#inputs-and-outputs)
-6. [Methods](#methods)
-7. [Running without the interface](#running-without-the-interface)
-8. [Architecture](#architecture)
-9. [Known limits](#known-limits)
-10. [Citation, licence and credits](#citation-licence-and-credits)
-
----
-
-## What it does
-
-| Step | What happens | Tools |
-|---|---|---|
-| **Conversion** | A `.czi` is converted into an ImageJ `.tif` (Z, C, Y, X) that keeps the pixel size, the z step and the whole Zen acquisition metadata. | `czifile`, `aicspylibczi` |
-| **Cell segmentation** | 3D masks of the cells, then optional shrinking and minimum size. | Cellpose 2, 3 or 4; Weka (Fiji) |
-| **Cell types** | The fluorescence of a protein marker splits the cells into two groups (Gaussian mixture). | scikit-learn |
-| **Spot / object detection** | Detection of the smFISH spots (or of larger objects) in 3D. | EpySeg, Spotiflow, Weka (Fiji), or a file of coordinates |
-| **Measurements** | Intensities and volume of every spot, local background, background-subtracted values. | — |
-| **Quantification** | Relative normalisation to reference spots, and/or absolute count of molecules. | — |
-| **Per-cell table** | One table with the cells, their types, their spots and every measurement. | Excel |
-| **Optional exports** | 3D coordinates of the cells, one crop (tif) per cell, a composite image with the masks, halos and spots. | — |
-| **Check and correct** | Look at the result on the image, validate or reject spots, move a spot to another cell, change a cell type, and rebuild the table. | *Viewer* |
-| **Explore** | Filters, distributions, proportions, copy of means by sample. | *Data Explorer* |
-| **Train** | Refine the pretrained 3D smFISH Spotiflow model on your own annotated crops. | *Spotiflow training* |
-
----
+To try it with an example stack and pre-trained models, see Tutorial folder.
 
 ## Installation
 
-### Requirements
+To install the pipeline on a new pc, follow these steps :
+- Download Anaconda at https://www.anaconda.com/download (Download now, skip registration)
+- Open Anaconda navigator (search it in the research bar of the pc)
+- Open Spyder from Navigator
+- Create a directory in Documents where you will put every python file from the Codes folder of this GitHub. Let's say you called it "Pipeline".
+- Drag and drop setup_env.py from Pipeline to Spyder, then run it, wait until it finished preparing the right environments (~10min).
+- Meanwhile, create a folder in Documents directory, named Repertoire (no accents, nothing just Repertoire).
+- Create in Repertoire a folder named "Model" where you will put your AI models, that segment cells and detect spots.
+-> The pipeline is ready to use
 
-- **conda** (Anaconda or Miniconda), on Windows, macOS or Linux.
-- A recent Python is **not** needed on its own: the setup script creates the environments.
-- A GPU is optional. Cellpose 3/4 and Spotiflow use it when PyTorch can see one. TensorFlow (EpySeg) does not use the GPU natively on Windows; it runs on the CPU unless installed under WSL2.
-- **Fiji** with the *Trainable Weka Segmentation* plugin, only if you want to use Weka models.
+## How to use it ?
+### How to use the pipeline ?
 
-### Create the environments
+- Drag and drop Main-Epyseg from Pipeline to Spyder.
+  
+- In the menu bar (File, Edit, Search...), click "Console", then "New console in environment", then "Conda : spots_analysis". It launches a new console in spots_analysis environment, that setup_env created before. It contains every library needed for Main to turn.
+  
+- Adjust your parameters in Main-Epyseg : indicate the name of your segmentation and spot detection models, if you have your own (see below). If you don't, ours are available on my google drive (see Tutorial). Indicate the name of your two populations of cells ("group1", "group2"), one of which must be marked by immunofluorescence ("marked"). The "group2" population will be the one you will see indicated by a halo in the final stack ("composite_", see below), that's why it should contain the name of your population of interest.
+  
+- Put the stacks(s) in the Repertoire folder (.tif or .czi), it will create a new folder for each stack, named after them and containing the results of analysis.
+- You might also want to analyse again some stacks you analysed before, to change settings for example. In this case, put the full folder where the analysis results of this stack are stored.
+  
+- Make sure your path and indicated channels are right (see below).
+  
+- Make sure you put your pc sleep mode parameter to a sufficient amount of time (one analysis takes 1h-1h30). If it goes in sleep mode, analysis might be stopped.
+  
+- Run Main-Epyseg.
 
-From the folder that holds the scripts:
+### How to get your own AI models ?
 
-```bash
-python setup_environments.py
-```
+Segmentation and spot detection by AI is the core of this pipeline, therefore, you might have to train you own AI models. 
 
-The script only uses the Python standard library, finds your conda, accepts the conda terms of service if needed, and creates what is missing. Options:
+For cell segmentation, I chose Cellpose 2 instead of Cellpose 3 because I found a great documentation on how to use it. Cellpose 4 was just too slow, too much computing power needed and didn't work well overall. If you want to use Cellpose 3 or 4, you will need to change the version of it in segment environment and you also might have to change the model calling and segmentation part (clearly indicated) in segmentation_cellpose-Epyseg.
+In order to get a working Cellpose 2 model, you can use pretrained ones, or train your own. Using a pretrained Cellpose 2 model is very well documented. To train an adapted cell segmentation model in Cellpose 2 (really efficient in my opinion), please refer to the following article and video :
+Pachitariu and Stringer, 2022, Nature ; https://www.youtube.com/watch?v=5qANHWoubZU
 
-| Option | Effect |
-|---|---|
-| `--check` | Only reports which environments exist and which packages are missing. |
-| `--only NAME [NAME ...]` | Creates only these environments. |
-| `--force` | Recreates the environments. |
-| `--device auto\|cpu\|cuda` | PyTorch build for Cellpose 3/4 and Spotiflow. `auto` takes the GPU build if `nvidia-smi` is found, otherwise the CPU one. |
-| `--yes` | Does not ask for confirmation. |
+To train an adapted smFISH spots detection model with Epyseg, please refer to the following article and GitHub : 
+Aigouy et al., 2020, Development. ; https://github.com/baigouy/EPySeg
 
-| Environment | Python | Used for |
-|---|---|---|
-| `guienv` | 3.11 | The application (PyQt6, pandas, matplotlib, tifffile…). |
-| `spots_analysis` | — | The analysis itself (`Newmain.py`), czi conversion, Weka post-processing. |
-| `segment` | 3.10 | Cellpose **2** (2.2.3): models trained with Cellpose 2. |
-| `cellpose3` | 3.10 | Cellpose **3**. |
-| `cellpose4` | 3.10 | Cellpose **4** (Cellpose-SAM). |
-| `chinmospots` | 3.10 | EpySeg (TensorFlow): detection of objects with an EpySeg model. |
-| `spotiflow` | — | Spotiflow: detection and training. |
+Once you trained them, put them in the "Model" folder of Repertoire, and indicate them in Main-Epyseg parameters.
+  
+### How to indicate your path properly ?
 
-At the end the script prints how to start the application.
+If your Repertoire folder is as advised in your Documents directory, then your path is "/Users/yourname/Documents/Repertoire/". 
 
-### Start the application
+It might change if you put it somewhere else and name it differently : Let's say you put it in your desktop and you called it "Analyse", then your path is "/Users/yourname/Desktop/Analyse/".
 
-```bash
-conda activate guienv
-python GUI4-globnorm.py
-```
+### How to indicate your channels properly ?
 
-Keep all the scripts in the same folder: the application finds the environments and the child scripts from there.
+- This pipeline needs at least three channels : one on which it will perform cell segmentation (with Miranda protein for example), one corresponding to sm-FISH spots, and one to detect cell types (Asense, GFP...). It's easy to identify their number in your stack : press Maj + Z and imageJ channels tools appear. In imageJ, if you have 4 channels, their number will go from 1 to 4. In python, they will go from 0 to 3, 0 being the first channel, corresponding to 1 in imageJ, and 3 the last channel corresponding to 4 in imageJ. Therefore, to properly indicate their number, substract one to the number indicated in imageJ : if Miranda channel is the first one (1 in imageJ), it will be 0 in python. If your sm-FISH channel is the third in imageJ, it will be 2 in python, etc...
+  
+- You can also get the mean fluorescence from a protein of interest in every cell. To do that, precise you want to get it by entering "y" in the "prot_yn" parameter (in Main-Epyseg), then indicate the channel of your protein of interest in the "prot_channel" parameter.
+  
+- If the fourth channel of your stack is for another protein you do not want to quantify, indicate "n" in "prot_yn" and put the channel of the protein in question in "chinmoprot_channel". The pipeline will do nothing of this channel.
 
----
+## What to expect from the analysis ?
 
-## Quick start
+This pipeline produces several files, named after the following convention :
+file info + base file name + .tif/.xlsx 
+With that in mind, the files produced and the information they contain, in production order, are the following :
 
-1. Open the **Analysis** tab and drop one or several images (`.czi` or `.tif`) in the files panel. Each image is analysed in its own folder.
-2. For each channel, choose a **role** (*Cells*, *Cell type marker*, *Objects*) and fill its parameters. A model is chosen in the **Models** page (see below).
-3. Press **Run**. The log shows the progress; the plots (background, distributions) appear next to it.
-4. Open the **Viewer** tab, load the analysis folder, check the spots and the cells, correct what needs it, and press **Compile changes**.
-5. Open the **Data Explorer**, load the data tables, filter, plot and copy the results.
+name : base file name (ex: yw_40X_21-04.czi)
 
-> A small example dataset is planned: `[ADD LINK OR FOLDER]`.
+content : Base stack from the microscope, with no modifications. This one is not produced by the pipeline, but is the first file you need to give to the code to start analysis. It must contain at least those three channels : segmentation marker (Miranda), probe, and cell type protein (Asense). 
 
----
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-## User guide
+name : base file name but tif file (ex: yw_40X_21-04.tif)
 
-### Analysis tab
+content : Duplicate of original microscope stack. This one is produced by the pipeline, and used to start analysis. It must contain at least those three channels : segmentation marker (Miranda), probe, and cell type protein (Asense). The name of this file will be refered to as "file name" and used to name every other file produced.
 
-**Channel roles**
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-| Role | What it is | Main parameters |
-|---|---|---|
-| **Cells** | The channel used to segment the cells. | Name of the population, model, shrink factor, minimum size, *Get cells 3D coordinates*, *Export cell crops*. |
-| **Cell type marker** | A protein channel that splits the cells in two groups. | Protein name, names of group 1 and 2, which group is marked, cells it applies to. |
-| **Objects** | A smFISH channel (spots or larger objects). | Name, type of probe, detection method, background and quantification options. |
+name : masks_ + file name
 
-Parameters can be saved and loaded as **presets**.
+content : raw segmentation result.
 
-**Models page.** Models are listed by source; drop a model (file or folder) in its section.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-| Source | Used for | Notes |
-|---|---|---|
-| **Cellpose** | Cells | Each model has a version (2, 3 or 4) that decides which environment runs it. Models made before Cellpose 3 are version 2 by default. |
-| **EpySeg** | Objects | Detection with an EpySeg model. |
-| **Spotiflow** | Objects | A model folder, or the name of a pretrained model such as `smfish_3d`. Optional probability threshold. |
-| **Weka (Fiji)** | Cells and objects | A `.model` file saved from Fiji's Trainable Weka Segmentation. Give the location of Fiji (the window checks the launcher and the plugin). Each model has a mode (2D plane by plane, or 3D) and the number of the class that is the object. |
-| **Coordinates file** | Objects | A table of coordinates (z, y, x) instead of a detector. |
+name : shrinked_ + file name 
 
-**Optics.** Spotiflow apertures and the PSF use the acquisition metadata of the image: numerical aperture, wavelengths, pinhole, refractive index, pixel size and z step. They are read from the image. If they cannot be found the analysis stops and tells you what is missing (*optical parameters not found*): fill them in **Advanced › Optics**, or run the analysis on the original Zeiss export. All the tif files the pipeline writes keep this metadata.
+content : shrinked segmentation result, to avoid detecting spots from adjacent cells.
 
-**Per-cell crops.** Tick *Export cell crops* in the cell parameters. A small window sets the margin (pixels or µm; µm needs a known pixel size), one 3D stack per cell or one 2D image per slice, the channels of the base file, the extra planes before and after (1 by default), and whether the image borders are completed with zeros. Files are written to `<cells name>_crops/` as `<image>_cell<n>.tif` (or `<image>_cell<n>_z<k>.tif`). Pixel size, z step and acquisition metadata are kept.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-### Viewer tab
+name : detected_ + file name 
 
-The viewer shows the composite image of an analysis folder and its data table.
+content : 3D probability map, where every pixel has a value between 0 and 1 to be part of a smFISH spot.
 
-- **Navigation:** wheel to zoom, drag to move, plane slider, per-channel contrast and opacity, *Fit*, *1:1*, *Save view*.
-- **Zoom cell** (key **Z**): zooms by an adjustable factor (4× by default) on the selected cell or spot, or the centre of the image if nothing is selected; never goes past the image edge.
-- **Cell mode:** information on a cell, its type for each marker, its spots with their data columns, and a *Belongs to cell* control for each spot.
-- **Spot mode:** click a spot to see its data columns, validate or reject it, change the cell it belongs to.
-- **Changes** are saved at once in a journal outside your analysis folders (`~/.pipeline_viewer/`), so nothing is lost if you close the application.
-- **Compile changes** applies them: it writes the data table and rebuilds the composite (halos, spot channels). It also **recomputes** the background-subtracted values, the absolute counts, the **normalised values** (the mean of the reference spots is computed again with the current cell types and spots, and every normalised value is redone, including those of spots you did not touch) and the **spot counts** of every cell. A backup of the data table is kept in the application folder.
-- Drag and drop a folder to load it. A *Loading data…* message is shown while it opens.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-### Data Explorer tab
+name : merge_ + file name
 
-Loads several data tables (one per image) and compares them.
+content : Fusion between detected_ and shrinked_, which allows to see probability map only in detected cells.
 
-- Filters on any column, on the source file (only this file, or all except), and on cell-level or spot-level values.
-- Counts and proportions use **one value per cell** for cell-level columns and one per spot otherwise, so cells with several spots are not counted several times.
-- Distributions and proportion plots, with the file name written on the figure.
-- *Copy means by sample* (a sample is a source file) to paste into a spreadsheet or a statistics program.
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-### Spotiflow training tab
+name : chinmo_threshold_ + file name + -lbl
 
-Refines the pretrained 3D smFISH Spotiflow model on your own spots. It works by **session**.
+content : File created after applying analysis of connected components on chinmo_threshold. Now, every point has a specific value ("label"). This file is created by yourself.
 
-1. **Choose a session folder.** `train/`, `val/` and `models/` are created in it.
-2. **Open an image** (`.czi` or `.tif`) and choose the smFISH channel.
-3. **Crop:** drag a rectangle on the image, choose the planes, and add it to `train/` or to `val/`. Use different crops for the two sets.
-4. **Annotate:** left click adds a spot in the current plane, right click removes the nearest one, the wheel changes plane, Ctrl + wheel zooms, the middle button moves the image. Spots of the neighbouring planes are shown in yellow. Every click is saved at once as `<crop>.csv` (columns `z, y, x`) next to `<crop>.tif`.
-5. **Train:** give a model name and a number of epochs (100 by default) and press *Train model*. It starts from the pretrained `smfish_3d` model.
-6. **Result:** the model is saved in `models/<name>/`, added to the Spotiflow models of the Models page, and the crops are shown with the spots found by the new model (orange rings).
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Spotiflow already augments the data during training, so an extra augmentation of the annotated crops is not needed. Fewer than a hundred well-chosen spots can already give a good model when starting from the pretrained one.
+name : merge_threshold_ + file name
 
----
+content : Fusion of the precedent file and shrinked_ which allows to see points only in the cells. It is used to determine the volume of the spot that is inside the cell, comparing with the precedent file.
 
-## Inputs and outputs
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-### Inputs
+name : file name + -intensity-measurements
 
-- `.czi` (Zeiss) or `.tif` (ImageJ), 3D with several channels, ordered (Z, C, Y, X).
-- Models (Cellpose, EpySeg, Spotiflow, Weka) chosen in the Models page.
-- For the *Coordinates file* method: a table with the columns `z, y, x`.
+content : .xlsx (excel) file containing every spot measurements made during the corresponding phase of the process (Label, Mean, Max, Min, NumberOfVoxels, Volume, Centers Of Mass X, Y, and Z)
 
-### Outputs
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-Each image is analysed in its own folder. The main files are:
+name : composite_ + file name 
 
-| File | Content |
-|---|---|
-| `data_<image>.xlsx` | **The main table** (see below). |
-| `<image>-<channel>intensity-measurements.xlsx` | Raw measurements of every detected spot, valid or not: intensities, volume, centre of mass, **background**, background-subtracted values, Z extent, parent cells. |
-| `composite_<image>.tif` | Hyperstack for the Viewer: cell masks, one halo channel per cell-type marker, and for each probe the rejected and the kept spots. |
-| `analysis_parameters_<image>.json` | The parameters of the analysis, read back by the Viewer. |
-| `background_*.xlsx`, `calibration_*.xlsx` | Background study and calibration tables. The background table has the columns `population, cell, z_center, voxels, mean, median, var`. |
-| `<cells name>_crops/` | Per-cell crops (optional). |
-| `spotiflow_results/` | Spotiflow detections (`z, y, x, prob, intens`) and the model and threshold used. |
-| `masks*`, `shrinked*`, `detected*`, … | Intermediate images; they are reused when nothing changed. |
+content : May be the most useful file. It is a 4 channels stack allowing you to apprehend the analysis results graphically. In channels order, you can see the detected cells, types (green halo for group2), detected but non kept spots (spots that are detected in the wrong cell), and kept spots. When opening it, you might have to "Make Composite" with imageJ, and then use Brightness and Contrast. To know more about how to use it, please go to the "Results" part of Tutorial.
 
-### The data table
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-**One row per spot.** Values that belong to a cell are written **only on the first row of the cell's block**; the other rows of the block are empty. The main columns are:
+name : data_ + file name
 
-| Column | Meaning |
-|---|---|
-| `<population>_labels` | Cell number. |
-| `ZYX_cell_coordinates` | Centre of mass of the cell in pixels, written `z, y, x` (optional). |
-| `<marker>_typing` | Type of the cell (group 1 or 2) for this marker. |
-| `<protein>_fluorescence` | Fluorescence of the marker in the cell. |
-| `<probe>_labels` | Spot number. |
-| `<probe>_number/cell` | Number of spots of the cell (first row of the block). |
-| `<probe>_Mean_intensity`, `_Sum_intensity`, `_Max_intensity`, `_Volume` | Raw measurements of the spot. |
-| `<probe>_BgSub_Mean_intensity`, `_BgSub_Sum_intensity`, `<probe>_bg_value` | Background-subtracted values and the background used. |
-| `<probe>_Normalized_Mean_intensity`, `_Normalized_Sum_intensity` | Relative values (if a normalisation was chosen). |
-| `<probe>_<unit>_count` | Absolute count (if the intensity of one molecule is given). |
+content : Excel file containing every cell, their type, spots, spot mean intensity, volume, number, and protei expression. Last row are means of every column.
 
----
+------------------------------------------------------------------------------------------------------------------------------------------------------------------
 
-## Methods
+name : Spot_numbers + file name
 
-**Background.** For every spot a local background is estimated around it. A background study over the cells of the image gives a per-plane trend, using a trimmed mean (1 %) and the median across cells; the table of the study can be saved from the background plot. Background-subtracted values are `Sum − voxels × background` and `Mean − background`.
+content : representative stats (percentages, means) on those data.
 
-**Absolute count.** The background-subtracted sum of a spot is divided by the intensity of one molecule.
+## How to change wrong data ?
 
-**Relative normalisation.** The reference spots are those that belong to the cells of a chosen type (and, if you wish, population), or all the others. The normalised value of a spot is its background-subtracted value divided by the mean of the reference spots, **excluding the spot itself**. In 3D mode, only the reference spots at the nearest depth are used. The mean is computed per sample (per image).
+As a lot of tools, this pipeline can make errors. Wrong typing of a cell, wrong spot kept, wrong spot out.. Some of these mistakes can happen. Data_reconstruction.py is here to fix that easily. If you see errors while inspecting the composite_ stack, just report it as follows in the data_ file :
+- If the type of a cell is wrong, just change it.
+- If a spot has been kept and you want it out, put 0 instead of its number in the "Spots_labels" column.
+- If you want to replace a spot by another that also has been detected but not kept in the cell, just replace the number of the wrong spot by the number of the right spot.
+- If you want to add a spot that has been detected but not kept in a cell, there are two possibilities :
+  - No spot has been kept in the cell : there's only one line with 0 in spot label and no_site following it. In this case, just replace 0 by the number of your spot.
+  - One spot has been kept in the cell : there's one line with the spot labels and info following. In this case create a line **below** this line, enter only the number of the cell and spot in the right columns
 
-**Cell types.** The fluorescence of a marker in each cell is separated into two groups by a Gaussian mixture; you name the groups and say which one is marked.
+Once you finished modifying data, save it (Ctrl-S) and close it. Put the folder drom which this file comes in Repertoire and make sure your path in Data_reconstruction is right. Launch Data_reconstruction : It will modify data_ (correct spots intensities and volumes) Spots_numbers_ (recalculating means and proportions) and composite_ (changing channels for changed spots, adding/removing halos).
 
-**Cell–spot assignment.** A spot belongs to a cell when enough of it lies inside the mask; spots that overlap several cells have several parent cells.
+## How to gather data from a lot of analyses ?
 
-**Optics.** The PSF and the Spotiflow apertures come from the numerical aperture, the wavelengths, the pinhole, the refractive index and the pixel size and z step of the image.
+Once you finished imaging and analysing a whole condition (replicates of control, tumoral, with/without treatment...), you might want to gather all the data produced to compare it with another condition. Gatherer.py is there to help you. You only have to put every folder containing analysis from this condition in Repertoire, then drag and drop Gatherer.py in Spyder : verify you entered the right path, add a group name for this condition and indicate the names of cell populations that are represented in your data. Launch Gatherer.
+In a few seconds, you will get a new folder named after the group name you added, containing two excel files :
+- One named Global_data_, containing intensity and volume of every spot from every analysis, sorted by type of the parent cell and by number of spot in the cell (1 ou 2).
+- One named Global_numbers_, containing spot number per cell proportions and mean intensities and volumes, from every sample.
 
-> Add here the exact formulas, thresholds and references you want to cite in a publication.
+## How does it work ?
 
----
+First, Main-Epyseg recognizes the files and folders to analyse. It determine if it's a .tif/.czi stack. 
+- In that case, it creates a folder named after it, duplicates the base stack as a .tif, and places it and itself in the new folder.
+- If it's a folder (expected to containing previous analysis results), it places itself in it. Then, it detects the base file by asking which file has none of the prefixes defined below. During this step, it searches for segmentation stack (shrinked_) and spots detection stack (detected_) and adapts the following process to their possible presence.
 
-## Running without the interface
+In both cases, here's what is done next :
+1. Transmit base file path to segmentation_cellpose-Epyseg.py as a subprocess. It segments the cells, gets the smaller ones out, saves the results in the folder (as masks_ and shrinked_), then returns to Main. If analysis is done on a folder, this step is made only if "shrinked_" stack is not found in the folder.
+2. Transmit base file path to spot_segmentation.py as a subprocess. It detects spots, saves the results in the folder (as detected_), then returns to Main. If analysis is done on a folder, this step is made only if "detected_" stack is not found in the folder.
+3. Verify no error happened during the two precedent steps. If there was an error, analysis is skipped and analysis on another file (if so) starts.
+4. Main creates 3 new stacks : "merge_", "chinmo_threshold_", "merge_threshold_" explanation of what they are can be found above. We now have stacks where every spot has a specific label.
+5. Then it measures for each spot the mean, max and min intensity, the volume (in um3) and number of voxels, as well as centers of mass. It saves these measures in -intensity-measurements.xlsx.
+6. It then estimates the type repartition. It means that, based on the assumption that your two groups show differences one to the other in type marker fluorescence, we expect to see two gaussians when plotting distribution of mean type marker fluorescence in every cell, resembling the following image :
+<img width="485" height="372" alt="Capture d&#39;écran 2026-07-22 114904" src="https://github.com/user-attachments/assets/82922103-b8ee-4b36-a8dc-8aff9a18f94f" />
 
-`Newmain.py` can be run on its own, in the `spots_analysis` environment:
-
-```bash
-python Newmain.py . '<parameters as JSON>' <analysis folder>/
-```
-
-The folder must hold the image (`<image>.tif`, or the `.czi` to convert). The JSON holds the list of channels with their roles and parameters, the optional background, normalisation and absolute-quantification settings, and the Python executables of the environments (`"envs"`). The simplest way to get a valid JSON is to set the parameters in the application: the file `analysis_parameters_<image>.json` written in the analysis folder records them.
-
----
-
-## Architecture
-
-```
-GUI4-globnorm.py              The application (tabs: Analysis, Viewer, Data Explorer, Spotiflow training)
-Newmain.py                    The analysis pipeline (can run alone)
-setup_environments.py         Creates and checks the conda environments
-optics.py                     Reads the acquisition metadata; PSF and apertures
-tif_meta.py                   Keeps pixel size, z step and Zen metadata in every tif written; czi conversion
-segmentation_cellpose-Epyseg.py   Cell segmentation with Cellpose 2/3/4, shrinking, minimum size
-segmentation_weka.py          Weka (Fiji) segmentation of cells or detection of objects
-fiji_tools.py                 Finds Fiji, checks the Weka plugin, runs it without interface
-spot_segmentation.py          Object detection with an EpySeg model
-spotiflow_detection.py        Spotiflow detection
-train_spotiflow.py            Training of a Spotiflow model (started by the training tab)
-```
-
-The application runs in `guienv`. It starts `Newmain.py` as a separate process; `Newmain.py` starts each child script with the Python of the right environment, so a Cellpose 3 model never meets TensorFlow. Scripts exchange **files** and text on the standard output; progress bars are shown on one line in the log. The Viewer journal lives in `~/.pipeline_viewer/`, outside the analysis folders.
-
----
-
-## Known limits
-
-- **Multi-probe composite:** the Viewer rebuilds the spot channels of the first probe only.
-- **Spots validated by hand** are recomputed from the measurements file. An analysis made with an older version lacks the background columns and must be run again once; the Viewer tells you.
-- **Crops:** masking the other cells in a crop is not implemented.
-- **Weka:** applied by Fiji without interface; the mode 3D has had little testing.
-- **EpySeg for cells** is not available yet.
-- **Not implemented yet:** time-lapse, nuclei (DAPI), threshold-free detection.
-- No automated test suite and no installer yet.
-
----
-
-## Citation, licence and credits
-
-**Citation.** If you use this software, please cite `[AUTHORS, TITLE, YEAR, LINK / DOI]`. A `CITATION.cff` file can be added to the repository so that GitHub shows a *Cite this repository* button.
-
-**Licence.** `[CHOOSE A LICENCE AND ADD A LICENSE FILE]`
-
-**Contact.** `[NAME, E-MAIL]`
-
-**Built on** (please also cite them):
-
-- **Cellpose** — Stringer et al., *Nature Methods* 2021; Pachitariu & Stringer, *Nature Methods* 2022; Stringer & Pachitariu, Cellpose3, 2025; Cellpose 4 (Cellpose-SAM), 2025.
-- **Spotiflow** — Dominguez Mantes et al., *Nature Methods* 2025.
-- **EpySeg** — Aigouy et al., *Development* 2020.
-- **Fiji** — Schindelin et al., *Nature Methods* 2012; **Trainable Weka Segmentation** — Arganda-Carreras et al., *Bioinformatics* 2017.
-- scikit-learn, scikit-image, SciPy, NumPy, pandas, tifffile, PyQt6, matplotlib.
-
-*(Check the exact references and years before publishing.)*
+The code tries to find the two gaussians 200 times with a different random seed, and prints the proportion of found gaussians that were the same (100% means every time, the two gaussians were the same). Here, the two dashed lines indicates where the mean of the gaussians are. You can see that they clearly separate the group with low fluorescence and the group with high fluorescence. This kind of histogram is plotted for each analysis with, as title, the name of the stack.

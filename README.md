@@ -59,6 +59,22 @@ The "Cell type marker" analysis is dedicated to identify and distinguish the cel
 
 The "Protein of interest" analysis measures the integrated intensity of a molecule inside each cell. It can be used to measure protein amount.
 
+### How to normalize your data ? 
+
+To be able to perform relevant data comparison from a stack to another, you might need to normalize them. Especially if it is about intensities.
+
+The pipeline contains a diversity of tools to normalize the intensities you got from objects detection (mostly smFISH spots) :
+
+**Background correction :**
+
+Background correction methods aim to extract real signal from noise for every pixel. To do so, background measurement is needed, and since there is no perfect way to estimate it, the pipeline enables the user to choose between three methods : 
+
+The per image method will determine the median background (more robust than mean against a few high values) in each cell, check if there is a significant link between depth and background, and then calculate for the whole image one global background mean of the background medians in each cell. Then this mean will be subtracted from the intensity of each spot taking in account the depth if the link with background is significant.
+
+The per cell method will determine the median background in each cell and check if there is a significant link between depth and background. Then for each spot, the median background of its cell will be subtracted from the intensity taking in account the depth if the link with background is significant.
+
+Morisaki and Stasevich method is a background measurement method you can find [here](https://pmc.ncbi.nlm.nih.gov/articles/PMC9191879/) that uses a ring around the spot to measure the local background. I do not recommend using this method because in the tests I ran on it the background measurements often seemed to take some signal from the PSF (which biaised the background measurement), and as the pixels number in the rings is relatively small the measurement is not robust to noise fluctuation. Finally, the exact method is not described in the original paper.
+
 ## What to expect from the analysis ?
 
 This pipeline produces several files, named after the following convention :

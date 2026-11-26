@@ -73,7 +73,15 @@ The per image method will determine the median background (more robust than mean
 
 The per cell method will determine the median background in each cell and check if there is a significant link between depth and background. Then for each spot, the median background of its cell will be subtracted from the intensity taking in account the depth if the link with background is significant.
 
-Morisaki and Stasevich method is a background measurement method you can find [here](https://pmc.ncbi.nlm.nih.gov/articles/PMC9191879/) that uses a ring around the spot to measure the local background. I do not recommend using this method because in the tests I ran on it the background measurements often seemed to take some signal from the PSF (which biaised the background measurement), and as the pixels number in the rings is relatively small the measurement is not robust to noise fluctuation. Finally, the exact method is not described in the original paper.
+Morisaki and Stasevich method is a background measurement method you can find more about [here](https://pmc.ncbi.nlm.nih.gov/articles/PMC9191879/) that uses a ring around the spot to measure the local background. I do not recommend using this method because in the tests I ran on it the background measurements often seemed to take some signal from the PSF (which biaised the background measurement), and as the pixels number in the rings is relatively small the measurement is not robust to noise fluctuation. Finally, the exact method is not described in the original paper.
+
+Note that background correction is not a normalisation method on its own, and needs absolute quantification.
+
+**Absolute quantification :**
+
+Using smFISH, most quantification methods use the mean image of a single mRNA to determine the number of nascent RNA in a transcription site, dividing the second one by the first. When using this kind of normalisation, you need to perform background correction as well so that the signal from each spot is containing only real signal.
+
+**Relative comparison :**
 
 ## What to expect from the analysis ?
 

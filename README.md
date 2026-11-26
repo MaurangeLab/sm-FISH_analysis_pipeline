@@ -2,7 +2,7 @@
 # sm-FISH_analysis_pipeline
 ## Introduction
 
-**This pipeline is an easy to use tool to analyse 3D stacks obtained from immunostaining combined with sm-FISH experiments.**
+**This pipeline is an easy to use tool powered by AI segmentation models to analyse 3D stacks obtained from immunostaining combined with sm-FISH experiments.**
 
 <img width="932" height="569" alt="Capture d&#39;écran 2026-11-23 153345" src="https://github.com/user-attachments/assets/b2302d25-2da6-48c8-a253-18bb1f2e6c3d" />
 

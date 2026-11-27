@@ -5,21 +5,13 @@ In this section, you will be able to try the pipeline with a stack that we teste
 
 First, follow the steps in the "installation" part of the introduction readme.
 
-To start trying the pipeline, go to https://drive.google.com/drive/folders/1ba1tU4iCUwcuiVIrBzaxO-MjkPu-qOHU?usp=sharing and get the "linknet-vgg16-sigmoid-0.h5" 
-and "Miranda2" models, as well as "test_stack.tif". 
+To start trying the pipeline, go to https://drive.google.com/drive/folders/1ba1tU4iCUwcuiVIrBzaxO-MjkPu-qOHU?usp=sharing and get the "Miranda2" cellpose model, and one of the two spots segmentation models : linknet-vgg16-sigmoid-0.h5 (Epyseg model) or the "New" folder which is a Spotiflow model. Given that the two of these are equivalent in terms of accuracy, I would suggest using the Spotiflow model as it is taking a couple minutes compared to 20min for the Epyseg model. Then, get the test stack, "test_stack.tif". 
 
-Follow the steps in the "How to use it ?" part of the introduction readme, analysis should take roughly 20min :
-- When Segmentation is finished (5min for this small stack), you will see this kind of message in the console :
-<img width="360" height="63" alt="Capture d&#39;écran 2026-07-22 161920" src="https://github.com/user-attachments/assets/308fcd59-de49-420c-9687-2a9833d927af" />
+Follow the steps in the "How to use it ?" part of the introduction readme :
+- The first channel ("0") 
 
-- Then, spots detection will start. When it is finished (10-15min), you should see "Done" just like for segmentation.
-- The code should then show rapidly these messages in the console :
-<img width="360" height="85" alt="Capture d&#39;écran 2026-07-22 162349" src="https://github.com/user-attachments/assets/759bcb97-2f8d-451b-84c8-55294d2a77db" />
 
 It means that every part of the code (that are described more precisely at the end of the introduction readme) has gone well. The "Gaussian recognition reliability : 100%" means that, trying with 200 different random seed, we found the same gaussians every time. However it does not mean that every cell type has been perfectly estimated.
-
-- At this point you can see in the graph pad the distribution of the type marker fluorescence as follows :
-<img width="623" height="451" alt="Capture d&#39;écran 2026-07-22 162807" src="https://github.com/user-attachments/assets/4e2e16bc-bfe3-4047-a619-9b87176e10f1" />
 
 Here, the stack is significantly smaller (cropped in 3D) than the one we got from the microscope, so a lot of information is missing. That's why the two gaussians are not that separated in this graph, and type detection is not at its best. But as you can see at the end of the introduction readme, the real density function (which is from the whole stack) distinguishes the two groups much better. 
 The yellow line indicates the center of the first gaussian, which is considered as being the low fluorescence group, and red line is the center of the gaussian for high fluorescence group.

@@ -376,12 +376,12 @@ for count, cells in enumerate(channels["seg"], 1):
                            dict(cells, fiji_path=params.get("fiji_path", "")),
                            expected=f"{path}masks{ch}_{file_name}.tif")
             # shrinking / minimum size on the masks that now exist (no model involved)
-            run_in_env("spots_analysis", "segmentation_cellpose-Epyseg.py", file_name, path,
+            run_in_env("spots_analysis", "segmentation_cellpose.py", file_name, path,
                        dict(seg, **{ch: "n"}), cells, expected=shrinked_file)
         else:
             cp_env = {2: "segment", 3: "cellpose3", 4: "cellpose4"}.get(int(float(str(cells.get("model_version", 2)))), "segment")
             print(f"Cellpose environment: {cp_env}")
-            run_in_env(cp_env, "segmentation_cellpose-Epyseg.py", file_name, path, seg, cells,
+            run_in_env(cp_env, "segmentation_cellpose.py", file_name, path, seg, cells,
                        expected=shrinked_file)
         with open(settings_file, "w", encoding="utf-8") as fh:
             json.dump(current, fh)
